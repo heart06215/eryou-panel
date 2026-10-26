@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "poll_interval": 1.0,
+  "github_ttl": 900,
+  "github_token": "",
+  "install_root": "",
+  "projects": [
+    {
+      "id": "ok-nte",
+      "game": "异环",
+      "name": "ok-nte",
+      "repo": "BnanZ0/ok-nte",
+      "kind": "okscript",
+      "directory": "D:\\Games\\ok-nte",
+      "exe": "ok-nte.exe",
+      "runner": "exe",
+      "notes": "基于图像识别的《异环》自动化工具。",
+      "accent": "#b08d57",
+      "log_dirs": [],
+      "git_url": "https://github.com/BnanZ0/ok-nte",
+      "docs_url": "https://ok-script.com/ok-nte/docs/",
+      "extra": {
+        "config_py": "src/config.py",
+        "source_main": "main.py"
+      }
+    },
+    {
+      "id": "ok-ww-enhanced",
+      "game": "鸣潮",
+      "name": "ok-ww-enhanced",
+      "repo": "zzc-tongji/ok-ww-enhanced",
+      "kind": "okscript",
+      "directory": "D:\\Games\\ok-ww",
+      "exe": "ok-ww.exe",
+      "runner": "exe",
+      "notes": "OK-WW 增强版。",
+      "accent": "#c9a227",
+      "log_dirs": [],
+      "git_url": "https://github.com/zzc-tongji/ok-ww-enhanced",
+      "docs_url": "https://github.com/zzc-tongji/ok-ww-enhanced#readme",
+      "extra": {
+        "config_py": "config.py",
+        "source_main": "main.py"
+      }
+    },
+    {
+      "id": "maa",
+      "game": "明日方舟",
+      "name": "MAA",
+      "repo": "MaaAssistantArknights/MaaAssistantArknights",
+      "kind": "maa",
+      "directory": "D:\\Games\\MAA",
+      "exe": "MAA.exe",
+      "runner": "exe",
+      "notes": "一键长草。",
+      "accent": "#8a6d3b",
+      "log_dirs": [],
+      "git_url": "https://github.com/MaaAssistantArknights/MaaAssistantArknights",
+      "docs_url": "https://maa.plus/docs/",
+      "extra": {
+        "exe_hints": ["MAA.exe"],
+        "cli_hints": ["maa.exe", "maa-cli.exe"]
+      }
+    }
+  ]
+}

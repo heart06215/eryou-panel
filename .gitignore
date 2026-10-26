@@ -1,0 +1,47 @@
+# 构建产物
+build/
+dist/*
+!dist/EryouPanel.exe
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# 运行期数据
+panel.json
+history.jsonl
+github-cache.json
+panel-logs/
+*.log
+!tests/fixtures/**/*.log
+
+# 已安装的第三方工具（体积大，不入库）
+/ok-nte/
+/ok-ww-enhanced/
+/MAA/
+.eryou-install-tmp/
+
+# 临时文件
+*.tmp
+*.bak
+
+# 构建产物与本地面板状态
+/EryouPanel.exe
+/EryouPanel.old.exe
+/.eryou-install/
+/.eryou-install-tmp/
+
+# 已安装的原项目与本地源码/运行时
+/sources/
+/maa-runtime/
+/BetterGI/
+/March7thAssistant/
+/AzurLaneAutoScript/
+/BlueArchiveAutoScript/
+/OnmyojiAutoScript/
+/HonkaiHelper/
+/ok-gf2/
+/ZenlessZoneZero-OneDragon/
