@@ -430,6 +430,8 @@ class FloatingPanel(AcrylicWindow):
         self.install_page.mumu_requested.connect(self._connect_mumu)
         self.install_page.apple_help_requested.connect(
             lambda: open_url("https://docs.maa.plus/zh-cn/manual/device/macos.html"))
+        self.install_page.mumu_site_requested.connect(
+            lambda: open_url("https://mumu.163.com/"))
         self.install_page.refresh_requested.connect(self._reload_selected)
         self.install_page.source_requested.connect(self._download_sources)
         self.tabs.currentChanged.connect(self._tab_changed)
