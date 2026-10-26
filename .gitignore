@@ -47,3 +47,5 @@ panel-logs/
 # local UI smoke files
 /_ui*.py
 /_ui*.png
+/_ww*.py
+/_ww*.png
