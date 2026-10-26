@@ -201,6 +201,23 @@ DEFAULT_PROJECTS: list[Project] = [
         extra={"mobile_only": True,
                "asset_patterns": ["umaandroidautomation", "x86_64", ".apk"]},
     ),
+    Project(
+        id="nikke-auto-script",
+        game="胜利女神：NIKKE",
+        name="NKAS",
+        repo="megumiss/NIKKEAutoScript",
+        kind="generic",
+        accent="#b47b8f",
+        game_kind="pc",
+        game_process="nikke.exe;NIKKE.exe",
+        notes="NIKKEAutoScript（NKAS）是 NIKKE 代表性自动日常脚本，"
+              "支持 PC 客户端和模拟器，覆盖日常、商店、战役和 CDK 等。",
+        git_url="https://github.com/megumiss/NIKKEAutoScript",
+        docs_url="https://nkas.megumiss.top/",
+        extra={"exe_hints": ["NikkeAutoScript.exe", "NKAS.exe"],
+               "allow_any_exe": True,
+               "asset_patterns": ["full-cn.7z"]},
+    ),
 ]
 
 _PLATFORM_DEFAULTS: dict[str, list[str]] = {
@@ -217,6 +234,7 @@ _PLATFORM_DEFAULTS: dict[str, list[str]] = {
     "zenless-zone-zero-one-dragon": ["pc"],
     "fgo-fga": ["android"],
     "uma-android-automation": ["android"],
+    "nikke-auto-script": ["pc", "android"],
 }
 for _project in DEFAULT_PROJECTS:
     _project.platforms = list(_PLATFORM_DEFAULTS.get(_project.id, ["pc"]))

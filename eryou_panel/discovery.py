@@ -32,6 +32,7 @@ FOLDER_TOKENS: dict[str, tuple[str, ...]] = {
     "honkai-helper": ("honkai", "dacapo", "崩坏3"),
     "ok-gf2": ("ok-gf2", "gf2", "少女前线2"),
     "zenless-zone-zero-one-dragon": ("onedragon", "zenlesszonezero", "绝区零", "zzz"),
+    "nikke-auto-script": ("nikke", "nkas", "胜利女神"),
 }
 
 EXE_HINTS: dict[str, tuple[str, ...]] = {
@@ -46,6 +47,7 @@ EXE_HINTS: dict[str, tuple[str, ...]] = {
     "honkai-helper": ("DaCapo.exe",),
     "ok-gf2": ("ok-gf2.exe",),
     "zenless-zone-zero-one-dragon": ("OneDragon-Launcher.exe",),
+    "nikke-auto-script": ("NikkeAutoScript.exe", "NKAS.exe"),
 }
 
 BAD_EXE_PARTS = ("unins", "uninstall", "update", "updater", "setup", "crash", "report")

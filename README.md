@@ -346,6 +346,7 @@ requests
 | 绝区零 | OneDragon | `DoctorReid/ZenlessZoneZero-OneDragon` | v2.5.6 |
 | FGO | FGA | `Fate-Grand-Automata/FGA` | v3068（Android APK） |
 | 赛马娘 | UmaAuto | `steve1316/uma-android-automation` | v5.9.1（Android APK） |
+| NIKKE | NKAS | `megumiss/NIKKEAutoScript` | v1.1.3 |
 
 - 安装包按项目选择对应的 Windows Release 资产
 - 大包通过镜像线路下载，支持进度和失败换线

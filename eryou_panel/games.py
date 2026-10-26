@@ -62,6 +62,12 @@ PC_SPECS: dict[str, dict] = {
         "launchers": ("launcher.exe", "ZenlessZoneZero.exe"),
         "processes": ("ZenlessZoneZero.exe", "launcher.exe"),
     },
+    "nikke-auto-script": {
+        "tokens": ("nikke", "胜利女神", "goddess of victory"),
+        "game": ("nikke.exe", "NIKKE.exe"),
+        "launchers": ("nikke.exe", "NIKKE.exe", "launcher.exe"),
+        "processes": ("nikke.exe", "NIKKE.exe", "launcher.exe"),
+    },
 }
 
 # 启动器 ≠ 游戏本体：优先直接拉起真正的游戏进程，启动器作为回退。

@@ -41,6 +41,7 @@ INSTALL_NAMES = {
     "honkai-helper": "HonkaiHelper",
     "ok-gf2": "ok-gf2",
     "zenless-zone-zero-one-dragon": "ZenlessZoneZero-OneDragon",
+    "nikke-auto-script": "NIKKEAutoScript",
 }
 USER_AGENT = "eryou-panel-installer/1.0"
 

@@ -33,7 +33,7 @@ def config(tmp_path: Path) -> Config:
 
 def test_config_roundtrip(tmp_path: Path) -> None:
     cfg = Config(tmp_path / "panel.json")
-    assert [p.id for p in cfg.projects] == ["ok-nte", "ok-ww-enhanced", "maa", "better-genshin-impact", "march7th-assistant", "azur-lane-auto-script", "blue-archive-auto-script", "onmyoji-auto-script", "honkai-helper", "ok-gf2", "zenless-zone-zero-one-dragon", "fgo-fga", "uma-android-automation"]
+    assert [p.id for p in cfg.projects] == ["ok-nte", "ok-ww-enhanced", "maa", "better-genshin-impact", "march7th-assistant", "azur-lane-auto-script", "blue-archive-auto-script", "onmyoji-auto-script", "honkai-helper", "ok-gf2", "zenless-zone-zero-one-dragon", "fgo-fga", "uma-android-automation", "nikke-auto-script"]
     cfg.projects[0].directory = r"D:\Games\ok-nte"
     cfg.save()
     again = Config(tmp_path / "panel.json")

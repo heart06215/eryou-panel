@@ -14,7 +14,7 @@ def test_representative_projects_are_in_default_catalog(tmp_path) -> None:
     assert {"better-genshin-impact", "march7th-assistant", "azur-lane-auto-script",
             "blue-archive-auto-script", "onmyoji-auto-script", "honkai-helper",
             "ok-gf2", "zenless-zone-zero-one-dragon",
-            "fgo-fga", "uma-android-automation"} <= ids
+            "fgo-fga", "uma-android-automation", "nikke-auto-script"} <= ids
 
 
 def test_project_specific_release_asset_selection(tmp_path) -> None:
