@@ -88,10 +88,10 @@ class Project:
             return "电脑端 · 仅电脑"
         if not pc:
             if android and not apple:
-                return "手机端 · 仅安卓"
+                return "仅支持手机 · 安卓"
             if apple and not android:
-                return "手机端 · 仅苹果"
-            return "手机端 · 支持安卓/苹果"
+                return "仅支持手机 · 苹果"
+            return "仅支持手机 · 安卓/苹果"
         supported = []
         if android:
             supported.append("安卓")

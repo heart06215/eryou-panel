@@ -167,6 +167,7 @@ class FloatingPanel(AcrylicWindow):
         self._game_display_worker: GameDisplayWorker | None = None
         self._update_worker: UpdateCheckWorker | None = None
         self._mobile_worker: MobileInstallWorker | None = None
+        self._mobile_permissions: set[str] = set()
         self._displays: list = []
         self._bureau = "android"
         self._maa_setup_project_id = ""
@@ -699,6 +700,9 @@ class FloatingPanel(AcrylicWindow):
         self._refresh_selected()
         self._refresh_logs()
         self._refresh_github(project_id, False)
+        project = self.config.get(project_id)
+        if project is not None and project.mobile_only and project.id not in self._mobile_permissions:
+            QTimer.singleShot(120, lambda p=project: self._ask_mobile_permission(p))
 
     def _refresh_selected(self) -> None:
         selected = self._selected()
@@ -1481,7 +1485,23 @@ class FloatingPanel(AcrylicWindow):
         self.install_page.set_mumu_ready(result.address)
         self._info(f"MuMu 已连接：{result.address}")
 
+    def _ask_mobile_permission(self, project: Project) -> bool:
+        if project.id in self._mobile_permissions:
+            return True
+        dialog = ConfirmDialog(
+            "允许安装到模拟器",
+            f"是否允许 {project.game} / {project.name} 把自己安装到 MuMu 模拟器？\n\n"
+            "允许后会下载该项目的 APK，并通过 ADB 安装到当前 MuMu。",
+            "允许并安装", self,
+        )
+        if dialog.exec() != QDialog.Accepted:
+            return False
+        self._mobile_permissions.add(project.id)
+        return True
+
     def _install_mobile_project(self, project: Project) -> None:
+        if not self._ask_mobile_permission(project):
+            return
         if self._mobile_worker is not None:
             self._info("正在安装手机端项目，请稍候")
             return
