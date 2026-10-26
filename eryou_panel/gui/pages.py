@@ -1025,6 +1025,7 @@ class InstallPage(QWidget):
     mobile_install_requested = Signal(object)
     mumu_requested = Signal()
     apple_help_requested = Signal()
+    mumu_site_requested = Signal()
     refresh_requested = Signal()
     source_requested = Signal()
 
@@ -1081,6 +1082,9 @@ class InstallPage(QWidget):
         self.mumu_btn = PushButton(FluentIcon.SYNC, "连接 MuMu", self.mumu_card)
         self.mumu_btn.clicked.connect(self.mumu_requested.emit)
         mumu_layout.addWidget(self.mumu_btn)
+        self.mumu_site = PushButton(FluentIcon.LINK, "MuMu 官网", self.mumu_card)
+        self.mumu_site.clicked.connect(self.mumu_site_requested.emit)
+        mumu_layout.addWidget(self.mumu_site)
         layout.addWidget(self.mumu_card)
         apple_row = QHBoxLayout()
         self.apple_notice = QLabel(
