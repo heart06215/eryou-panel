@@ -344,6 +344,8 @@ requests
 | 崩坏3 | HonkaiHelper | `Aues6uen11Z/HonkaiHelper` | v2025.6.28 |
 | 少女前线2 | ok-gf2 | `AliceJump/ok-gf2` | v1.2.91 |
 | 绝区零 | OneDragon | `DoctorReid/ZenlessZoneZero-OneDragon` | v2.5.6 |
+| FGO | FGA | `Fate-Grand-Automata/FGA` | v3068（Android APK） |
+| 赛马娘 | UmaAuto | `steve1316/uma-android-automation` | v5.9.1（Android APK） |
 
 - 安装包按项目选择对应的 Windows Release 资产
 - 大包通过镜像线路下载，支持进度和失败换线
