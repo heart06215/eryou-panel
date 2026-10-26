@@ -70,6 +70,7 @@ from .widgets import (
 from .workers import (
     GameDisplayWorker,
     GuiQueueWorker,
+    MobileInstallWorker,
     UpdateCheckWorker,
     GameScanWorker,
     GithubWorker,
@@ -165,7 +166,9 @@ class FloatingPanel(AcrylicWindow):
         self._gui_queue_worker: GuiQueueWorker | None = None
         self._game_display_worker: GameDisplayWorker | None = None
         self._update_worker: UpdateCheckWorker | None = None
+        self._mobile_worker: MobileInstallWorker | None = None
         self._displays: list = []
+        self._bureau = "android"
         self._maa_setup_project_id = ""
 
         self.setWindowTitle("二游面板")
@@ -185,6 +188,7 @@ class FloatingPanel(AcrylicWindow):
         self._select_project(self.selected_id, force=True)
         self._tick()
         self.install_page.set_auto_update(bool(self.config.ui.get("auto_update", False)))
+        self._set_bureau("android")
         QTimer.singleShot(400, self._refresh_source_status)
         QTimer.singleShot(500, lambda: self._scan_games(False))
         QTimer.singleShot(250, self._first_show)
@@ -272,6 +276,17 @@ class FloatingPanel(AcrylicWindow):
         label = QLabel("项目", sidebar)
         label.setObjectName("SectionTitle")
         sidebar_outer.addWidget(label)
+        bureau_row = QHBoxLayout()
+        bureau_row.setSpacing(6)
+        self.bureau_android = PushButton("安卓总局", sidebar)
+        self.bureau_apple = PushButton("苹果总局", sidebar)
+        self.bureau_android.clicked.connect(lambda: self._set_bureau("android"))
+        self.bureau_apple.clicked.connect(lambda: self._set_bureau("apple"))
+        self.bureau_android.setMinimumHeight(32)
+        self.bureau_apple.setMinimumHeight(32)
+        bureau_row.addWidget(self.bureau_android, 1)
+        bureau_row.addWidget(self.bureau_apple, 1)
+        sidebar_outer.addLayout(bureau_row)
         scroll = QScrollArea(sidebar)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
@@ -380,6 +395,7 @@ class FloatingPanel(AcrylicWindow):
         self.overview.launch_game_requested.connect(self._launch_game)
         self.overview.launch_emulator_requested.connect(self._launch_emulator)
         self.overview.find_game_requested.connect(lambda: self._scan_games(True))
+        self.overview.update_check_requested.connect(lambda: self._check_updates(False))
         self.tasks.run_requested.connect(self._run_tasks)
         self.tasks.maa_settings_saved.connect(self._maa_save_settings)
         self.tasks.maa_daily_requested.connect(self._maa_daily)
@@ -410,6 +426,10 @@ class FloatingPanel(AcrylicWindow):
             lambda project: self._install_projects(project.id, True))
         self.install_page.update_check_requested.connect(lambda: self._check_updates(False))
         self.install_page.auto_update_changed.connect(self._auto_update_changed)
+        self.install_page.mobile_install_requested.connect(self._install_mobile_project)
+        self.install_page.mumu_requested.connect(self._connect_mumu)
+        self.install_page.apple_help_requested.connect(
+            lambda: open_url("https://docs.maa.plus/zh-cn/manual/device/macos.html"))
         self.install_page.refresh_requested.connect(self._reload_selected)
         self.install_page.source_requested.connect(self._download_sources)
         self.tabs.currentChanged.connect(self._tab_changed)
@@ -635,7 +655,8 @@ class FloatingPanel(AcrylicWindow):
         self.side_summary.setText(f"{total} 个项目 · {running} 个运行中")
         installed = sum(
             1 for project in self.config.projects
-            if project.directory and Path(project.directory).is_dir()
+            if (project.directory and Path(project.directory).is_dir())
+            or (project.mobile_only and project.extra.get("mobile_installed"))
         )
         if self._install_worker is not None:
             install_text = "安装情况 · 安装中"
@@ -968,7 +989,9 @@ class FloatingPanel(AcrylicWindow):
         if selected is None:
             return
         project, runtime, adapter = selected
-        if project.kind in ("okscript", "maa", "generic"):
+        if project.mobile_only:
+            self._install_mobile_project(project)
+        elif project.kind in ("okscript", "maa", "generic"):
             self._open_project_gui()
         else:
             self._open_tab(0)
@@ -1041,6 +1064,9 @@ class FloatingPanel(AcrylicWindow):
         if selected is None:
             return
         project, runtime, adapter = selected
+        if project.mobile_only:
+            self._install_mobile_project(project)
+            return
         if project.kind not in ("okscript", "maa", "generic"):
             self._open_tab(0)
             return
@@ -1427,6 +1453,69 @@ class FloatingPanel(AcrylicWindow):
             open_path(selected[0].directory)
 
     # ---- 游戏探测 / 启动 -------------------------------------------
+    def _connect_mumu(self) -> None:
+        maa = self.config.get("maa")
+        if maa is None:
+            return
+        if self._mumu_worker is not None:
+            self.install_page.set_mumu_progress(0, "MuMu 正在连接…")
+            return
+        address = str(maa.extra.get("maa_address", "127.0.0.1:16384"))
+        self.install_page.set_mumu_progress(0, "正在启动 MuMu…")
+        worker = MumuStartWorker(maa, address, self)
+        worker.progress.connect(self.install_page.set_mumu_progress)
+        worker.done.connect(self._mumu_connect_done)
+        worker.failed.connect(self.install_page.set_mumu_failed)
+        worker.finished.connect(self._mumu_finished)
+        self._mumu_worker = worker
+        worker.start()
+
+    def _mumu_connect_done(self, result) -> None:
+        project = self.config.get(result.project_id)
+        if project is not None:
+            project.game_adb = result.adb
+            project.extra["maa_address"] = result.address
+            self.config.save()
+        self.install_page.set_mumu_ready(result.address)
+        self._info(f"MuMu 已连接：{result.address}")
+
+    def _install_mobile_project(self, project: Project) -> None:
+        if self._mobile_worker is not None:
+            self._info("正在安装手机端项目，请稍候")
+            return
+        maa = self.config.get("maa")
+        if maa is None:
+            self._error("未找到 MAA 项目，无法启动 MuMu")
+            return
+        worker = MobileInstallWorker(project, maa, self.config.github_token, self)
+        worker.progress.connect(
+            lambda value, message: self.install_page.set_project_progress(project.id, value, message))
+        worker.progress.connect(lambda value, message: self.install_page.set_mumu_progress(value, message))
+        worker.log.connect(lambda message: None)
+        worker.done.connect(self._mobile_done)
+        worker.failed.connect(lambda message: self._mobile_failed(project.id, message))
+        worker.finished.connect(self._mobile_finished)
+        self._mobile_worker = worker
+        self.install_page.begin_install([project])
+        worker.start()
+
+    def _mobile_finished(self) -> None:
+        self._mobile_worker = None
+
+    def _mobile_done(self, result) -> None:
+        project = self.config.get(result["project_id"])
+        if project is not None:
+            project.extra["mobile_installed"] = True
+            project.extra["mobile_tag"] = result.get("tag", "")
+            self.config.save()
+        self.install_page.set_mobile_done(result["project_id"], result.get("tag", ""))
+        self.install_page.set_mumu_ready("")
+        self._info(f"已安装到 MuMu：{result.get('apk', '')}")
+
+    def _mobile_failed(self, project_id: str, message: str) -> None:
+        self.install_page.set_mobile_failed(project_id, message)
+        self._error("安装到 MuMu 失败：" + message)
+
     def _auto_update_check(self) -> None:
         if bool(self.config.ui.get("auto_update", False)):
             self._check_updates(True)
@@ -1720,9 +1809,13 @@ class FloatingPanel(AcrylicWindow):
         if project_id:
             projects = [self.config.get(project_id)]
             projects = [p for p in projects if p is not None]
+            if projects and projects[0].mobile_only:
+                self._install_mobile_project(projects[0])
+                return
         else:
             projects = [p for p in self.config.projects
-                        if force or not (p.directory and Path(p.directory).is_dir())]
+                        if not p.mobile_only
+                        and (force or not (p.directory and Path(p.directory).is_dir()))]
         if not projects:
             self._info("没有需要安装的项目")
             return
@@ -1841,6 +1934,31 @@ class FloatingPanel(AcrylicWindow):
             pass
 
     # ---- 设置 -----------------------------------------------------
+    def _set_bureau(self, bureau: str) -> None:
+        if bureau not in ("android", "apple"):
+            return
+        self._bureau = bureau
+        android = bureau == "android"
+        self.bureau_android.setStyleSheet("font-weight:700;" if android else "")
+        self.bureau_apple.setStyleSheet("" if android else "font-weight:700;")
+        visible_ids = []
+        for project in self.config.projects:
+            visible = project.supports_bureau[0 if android else 1]
+            card = self.cards.get(project.id)
+            if card is not None:
+                card.setVisible(visible)
+            row = self.compact_rows.get(project.id)
+            if row is not None:
+                row.setVisible(visible)
+            if visible:
+                visible_ids.append(project.id)
+        self.install_page.set_bureau(bureau)
+        self.side_summary.setText(
+            f"{len(visible_ids)} 个项目 · {sum(1 for p in self.config.projects if self.controller.runtimes[p.id].status == 'running')} 运行中"
+        )
+        if self.selected_id not in visible_ids and visible_ids:
+            self._select_project(visible_ids[0], force=True)
+
     def _add_custom_project(self) -> None:
         dialog = AddProjectDialog(self.config, self)
         if dialog.exec() != QDialog.Accepted or dialog.project is None:
@@ -2089,9 +2207,14 @@ class AddProjectDialog(QDialog):
         self.url.setPlaceholderText("https://github.com/owner/repo")
         self.name = LineEdit(self)
         self.game = LineEdit(self)
+        self.platform = ComboBox(self)
+        self.platform.addItem("电脑端", userData="pc")
+        self.platform.addItem("手机端 · 安卓", userData="android")
+        self.platform.addItem("手机端 · 苹果", userData="ios")
         form.addRow("GitHub 地址", self.url)
         form.addRow("项目名称", self.name)
         form.addRow("游戏名称", self.game)
+        form.addRow("运行平台", self.platform)
         layout.addLayout(form)
         self.status = QLabel("等待解析", self)
         self.status.setObjectName("TinyLabel")
@@ -2164,12 +2287,15 @@ class AddProjectDialog(QDialog):
         game = self.game.text().strip() or self.repo.split("/")[-1]
         name = self.name.text().strip() or self.repo.split("/")[-1]
         release_url = f"https://github.com/{self.repo}"
+        platform = str(self.platform.currentData() or "pc")
         self.project = Project(
             id=project_id, game=game, name=name, repo=self.repo,
-            kind="generic", game_kind="pc", accent="#b08d57",
+            kind="generic", game_kind="pc" if platform == "pc" else "emulator",
+            platforms=[platform], accent="#b08d57",
             notes="通过 GitHub 地址添加的自定义原项目；任务和配置在原项目内完成。",
             git_url=release_url, docs_url=release_url,
-            extra={"allow_any_exe": True, "asset_any": True, "custom": True},
+            extra={"allow_any_exe": True, "asset_any": True,
+                   "custom": True, "mobile_only": platform != "pc"},
         )
         self.accept()
 

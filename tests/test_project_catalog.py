@@ -13,7 +13,8 @@ def test_representative_projects_are_in_default_catalog(tmp_path) -> None:
     ids = {p.id for p in cfg.projects}
     assert {"better-genshin-impact", "march7th-assistant", "azur-lane-auto-script",
             "blue-archive-auto-script", "onmyoji-auto-script", "honkai-helper",
-            "ok-gf2", "zenless-zone-zero-one-dragon"} <= ids
+            "ok-gf2", "zenless-zone-zero-one-dragon",
+            "fgo-fga", "uma-android-automation"} <= ids
 
 
 def test_project_specific_release_asset_selection(tmp_path) -> None:

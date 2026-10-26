@@ -188,6 +188,36 @@ class UpdateCheckWorker(QThread):
         except Exception as exc:
             self.failed.emit(str(exc))
 
+class MobileInstallWorker(QThread):
+    progress = Signal(int, str)
+    log = Signal(str)
+    done = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, project: Project, maa_project: Project, token: str = "", parent=None) -> None:
+        super().__init__(parent)
+        self.project = project
+        self.maa_project = maa_project
+        self.token = token
+
+    def run(self) -> None:
+        import shutil
+        from ..mobile_install import prepare_apk, install_apk
+        temp = None
+        try:
+            self.progress.emit(5, "获取 GitHub 最新 APK…")
+            apk, tag, temp = prepare_apk(self.project, self.token, self.log.emit)
+            self.progress.emit(55, "APK 已下载，连接 MuMu…")
+            result = install_apk(self.maa_project, apk, self.log.emit)
+            self.progress.emit(100, "已安装到 MuMu")
+            self.done.emit({"project_id": self.project.id, "tag": tag,
+                            "package": result, "apk": apk.name})
+        except Exception as exc:
+            self.failed.emit(str(exc))
+        finally:
+            if temp is not None:
+                shutil.rmtree(temp, ignore_errors=True)
+
 class SourceFetchWorker(QThread):
     progress = Signal(float, str)
     log = Signal(str)

@@ -172,7 +172,55 @@ DEFAULT_PROJECTS: list[Project] = [
                "asset_patterns": ["zenlesszonezero-onedragon", "-full.zip"],
                "asset_exclude": ["withruntime"]},
     ),
+    Project(
+        id="fgo-fga",
+        game="FGO",
+        name="FGA",
+        repo="Fate-Grand-Automata/FGA",
+        kind="generic",
+        accent="#c76b6b",
+        game_kind="emulator",
+        notes="Fate/Grand Automata（FGA）是 FGO 最代表性的自动化项目，"
+              "Android 端 APK，安装到 MuMu 后接管战斗和刷本。",
+        git_url="https://github.com/Fate-Grand-Automata/FGA",
+        docs_url="https://fate-grand-automata.github.io/",
+        extra={"mobile_only": True, "asset_patterns": ["fga-apk", ".zip"]},
+    ),
+    Project(
+        id="uma-android-automation",
+        game="赛马娘",
+        name="UmaAuto",
+        repo="steve1316/uma-android-automation",
+        kind="generic",
+        accent="#d48aa8",
+        game_kind="emulator",
+        notes="Uma Android Automation 是赛马娘 Android 端自动化 APK，"
+              "支持自动育成、继承和赛事流程，可安装到 MuMu。",
+        git_url="https://github.com/steve1316/uma-android-automation",
+        docs_url="https://github.com/steve1316/uma-android-automation",
+        extra={"mobile_only": True,
+               "asset_patterns": ["umaandroidautomation", "x86_64", ".apk"]},
+    ),
 ]
+
+_PLATFORM_DEFAULTS: dict[str, list[str]] = {
+    "ok-nte": ["pc"],
+    "ok-ww-enhanced": ["pc"],
+    "maa": ["pc", "android", "macos"],
+    "better-genshin-impact": ["pc"],
+    "march7th-assistant": ["pc"],
+    "azur-lane-auto-script": ["pc", "android"],
+    "blue-archive-auto-script": ["pc", "android"],
+    "onmyoji-auto-script": ["pc", "android"],
+    "honkai-helper": ["pc"],
+    "ok-gf2": ["pc"],
+    "zenless-zone-zero-one-dragon": ["pc"],
+    "fgo-fga": ["android"],
+    "uma-android-automation": ["android"],
+}
+for _project in DEFAULT_PROJECTS:
+    _project.platforms = list(_PLATFORM_DEFAULTS.get(_project.id, ["pc"]))
+
 
 # 已知任务类名 -> 中文名
 TASK_NAMES: dict[str, str] = {

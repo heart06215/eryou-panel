@@ -70,6 +70,7 @@ class OverviewPage(QWidget):
     launch_game_requested = Signal()
     launch_emulator_requested = Signal()
     find_game_requested = Signal()
+    update_check_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -106,9 +107,12 @@ class OverviewPage(QWidget):
         self.command_btn = icon_button(FluentIcon.COMMAND_PROMPT, "命令行", self)
         self.settings_btn = icon_button(FluentIcon.SETTING, "项目设置", self)
         self.dir_btn = icon_button(FluentIcon.FOLDER, "打开目录", self)
+        self.update_btn = PushButton(FluentIcon.SYNC, "检查更新", self)
         for button in (self.start_btn, self.stop_btn,
-                       self.command_btn, self.settings_btn, self.dir_btn):
+                       self.command_btn, self.settings_btn, self.dir_btn,
+                       self.update_btn):
             head.addWidget(button)
+        self.update_btn.clicked.connect(self.update_check_requested.emit)
         self.command_btn.setVisible(False)
         self.settings_btn.setVisible(False)
         layout.addLayout(head)
@@ -141,6 +145,7 @@ class OverviewPage(QWidget):
         notes_card.setVisible(False)
 
         game_card = Card(self)
+        self.game_card = game_card
         game_layout = QHBoxLayout(game_card)
         game_layout.setContentsMargins(16, 10, 16, 10)
         game_left = QVBoxLayout()
@@ -175,7 +180,7 @@ class OverviewPage(QWidget):
         info_layout.setVerticalSpacing(8)
         self.info: dict[str, QLabel] = {}
         rows = [("目录", "path"), ("形态", "mode"), ("仓库", "repo"),
-                ("最新", "latest"), ("运行", "run"), ("任务", "task")]
+                ("最新", "latest"), ("平台", "platform"), ("运行", "run"), ("任务", "task")]
         for index, (label, key) in enumerate(rows):
             caption = QLabel(label, info_card)
             caption.setObjectName("Metric")
@@ -234,19 +239,24 @@ class OverviewPage(QWidget):
                     github: GithubInfo | None, history: list[HistoryEntry]) -> None:
         self.title.setText(project.game)
         self.name.setText(project.name)
-        if project.kind == "okscript":
+        if project.mobile_only:
+            self.start_btn.setText("安装到 MuMu")
+            self.start_btn.setToolTip("下载手机端 APK 并安装到 MuMu 模拟器")
+        elif project.kind == "okscript":
             self.start_btn.setText("打开原项目")
             self.start_btn.setToolTip("启动原项目官方 GUI；任务在上游界面执行")
         else:
-            self.start_btn.setText("运行任务")
-            self.start_btn.setToolTip("打开任务页，选择要执行的任务")
+            self.start_btn.setText("打开原项目")
+            self.start_btn.setToolTip("打开原项目；任务在原项目内执行")
         self._is_maa = project.kind == "maa"
         self.launch_game_btn.setText("打开 MAA" if self._is_maa else "打开原项目")
         if self._is_maa:
             self.launch_game_btn.setToolTip("打开 MAA 原项目；任务和设置都在 MAA 内操作")
         else:
             self.launch_game_btn.setToolTip("打开原项目；任务、配置和游戏启动都在原项目内操作")
-        if not project.directory:
+        if project.mobile_only and project.extra.get("mobile_installed") and not project.directory:
+            self.status.set_state("running", "已安装到 MuMu")
+        elif not project.directory:
             self.status.set_state("stopped", "未安装")
         elif runtime.status == "running":
             self.status.set_state("running", "运行中")
@@ -262,7 +272,12 @@ class OverviewPage(QWidget):
 
         self.info["path"].setText(project.directory or "未设置")
         self.info["path"].setToolTip(project.directory or "按 i 安装，或按 p 指定目录")
-        self.info["mode"].setText(adapter.mode_text() + (f" · v{runtime.version}" if runtime.version else ""))
+        self.info["mode"].setText(
+            "手机端 · MuMu" if project.mobile_only else
+            adapter.mode_text() + (f" · v{runtime.version}" if runtime.version else "")
+        )
+        self.info["platform"].setText(project.platform_text)
+        self.game_card.setVisible(not project.mobile_only)
         repo_text = (f"https://github.com/{project.repo}" if project.repo else "—")
         if github is not None:
             repo_text += f"    ★ {github.stars}    Issues {github.issues}"
@@ -321,12 +336,19 @@ class OverviewPage(QWidget):
             self.history.setItem(row, 2, QTableWidgetItem(result))
 
         installed = bool(project.directory and Path(project.directory).is_dir())
+        if project.mobile_only and project.extra.get("mobile_installed"):
+            installed = True
         self.install_card.setVisible(not installed)
         if not installed:
             target = Path(project.directory) if project.directory else None
-            self.install_hint.setText(
-                f"未安装。按 i / 点击右侧按钮会自动下载最新 Release 到固定目录，"
-                f"不会写入其它位置。" + (f"\n当前目标：{target}" if target else ""))
+            if project.mobile_only:
+                self.install_hint.setText("手机端项目：下载 APK 并安装到 MuMu 模拟器。")
+                self.install_btn.setText("安装到 MuMu")
+            else:
+                self.install_hint.setText(
+                    f"未安装。按 i / 点击右侧按钮会自动下载最新 Release 到固定目录，"
+                    f"不会写入其它位置。" + (f"\n当前目标：{target}" if target else ""))
+                self.install_btn.setText("一键安装")
 
     def update_live(self, runtime: Runtime) -> None:
         if runtime.status == "running":
@@ -515,8 +537,13 @@ class TasksPage(QWidget):
         self.tasks = list(runtime.tasks)
         self._gui_mode = False
         self.gui_card.setVisible(True)
-        self.gui_btn.setText("打开 MAA" if project.kind == "maa" else "打开原项目界面")
+        self.gui_btn.setText(
+            "安装到 MuMu" if project.mobile_only else
+            "打开 MAA" if project.kind == "maa" else "打开原项目界面"
+        )
         self.gui_hint.setText(
+            "手机端 APK：下载后安装到 MuMu 模拟器。"
+            if project.mobile_only else
             "MAA 的任务、干员、关卡和设置都在 MAA 原项目内操作。"
             if project.kind == "maa" else
             "任务、角色配置、日常、自动战斗等全部在原项目界面完成。"
@@ -995,6 +1022,9 @@ class InstallPage(QWidget):
     update_requested = Signal(object)
     update_check_requested = Signal()
     auto_update_changed = Signal(bool)
+    mobile_install_requested = Signal(object)
+    mumu_requested = Signal()
+    apple_help_requested = Signal()
     refresh_requested = Signal()
     source_requested = Signal()
 
@@ -1005,6 +1035,8 @@ class InstallPage(QWidget):
         self._active_ids: set[str] = set()
         self._last_errors: dict[str, str] = {}
         self._updates: dict[str, str] = {}
+        self._projects = list(projects)
+        self._row_cards = {}
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(6, 6, 12, 12)
@@ -1038,6 +1070,33 @@ class InstallPage(QWidget):
         overall.addWidget(self.overall_bar, 1)
         layout.addLayout(overall)
 
+        self.mumu_card = Card(self)
+        mumu_layout = QHBoxLayout(self.mumu_card)
+        mumu_layout.setContentsMargins(16, 8, 16, 8)
+        mumu_layout.setSpacing(8)
+        mumu_layout.addWidget(SectionTitle("安卓总局 · MuMu", self.mumu_card))
+        self.mumu_status = QLabel("未连接 MuMu", self.mumu_card)
+        self.mumu_status.setObjectName("TinyLabel")
+        mumu_layout.addWidget(self.mumu_status, 1)
+        self.mumu_btn = PushButton(FluentIcon.SYNC, "连接 MuMu", self.mumu_card)
+        self.mumu_btn.clicked.connect(self.mumu_requested.emit)
+        mumu_layout.addWidget(self.mumu_btn)
+        layout.addWidget(self.mumu_card)
+        apple_row = QHBoxLayout()
+        self.apple_notice = QLabel(
+            "苹果总局：PC 工具可在此查看；iOS 设备安装需在 Apple 设备/PlayCover 完成，Windows 不能直接安装 IPA。",
+            self,
+        )
+        self.apple_notice.setObjectName("PageHint")
+        self.apple_notice.setWordWrap(True)
+        apple_row.addWidget(self.apple_notice, 1)
+        self.apple_help = PushButton(FluentIcon.LINK, "苹果安装说明", self)
+        self.apple_help.clicked.connect(self.apple_help_requested.emit)
+        apple_row.addWidget(self.apple_help)
+        self.apple_notice.setVisible(False)
+        self.apple_help.setVisible(False)
+        layout.addLayout(apple_row)
+
         scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
@@ -1056,7 +1115,7 @@ class InstallPage(QWidget):
             row.setContentsMargins(16, 12, 16, 12)
             left = QVBoxLayout()
             left.setSpacing(4)
-            game = QLabel(f"{project.game}  ·  {project.name}", card)
+            game = QLabel(f"{project.game}  ·  {project.name}    {project.platform_text}", card)
             game.setObjectName("GameName")
             path = QLabel("", card)
             path.setObjectName("PathLabel")
@@ -1070,13 +1129,18 @@ class InstallPage(QWidget):
             left.addWidget(path)
             left.addWidget(status)
             left.addWidget(bar)
-            button = PushButton(FluentIcon.DOWNLOAD, "安装", card)
+            button = PushButton(
+                FluentIcon.DOWNLOAD,
+                "安装到 MuMu" if project.mobile_only else "安装",
+                card,
+            )
             button.clicked.connect(
                 lambda _checked=False, p=project: self._project_button(p))
             row.addLayout(left, 1)
             row.addWidget(button)
             cards_layout.addWidget(card)
             self.rows[project.id] = (path, status, button, bar)
+            self._row_cards[project.id] = card
 
         self.source_card = Card(self)
         source_layout = QVBoxLayout(self.source_card)
@@ -1114,7 +1178,7 @@ class InstallPage(QWidget):
         row.setContentsMargins(16, 12, 16, 12)
         left = QVBoxLayout()
         left.setSpacing(4)
-        game = QLabel(f"{project.game}  ·  {project.name}", card)
+        game = QLabel(f"{project.game}  ·  {project.name}    {project.platform_text}", card)
         game.setObjectName("GameName")
         path = QLabel("", card)
         path.setObjectName("PathLabel")
@@ -1128,19 +1192,27 @@ class InstallPage(QWidget):
         left.addWidget(path)
         left.addWidget(status)
         left.addWidget(bar)
-        button = PushButton(FluentIcon.DOWNLOAD, "安装", card)
+        button = PushButton(
+            FluentIcon.DOWNLOAD,
+            "安装到 MuMu" if project.mobile_only else "安装",
+            card,
+        )
         button.clicked.connect(lambda _checked=False, p=project: self._project_button(p))
         row.addLayout(left, 1)
         row.addWidget(button)
         self.cards_layout.insertWidget(self.cards_layout.count() - 1, card)
         self.rows[project.id] = (path, status, button, bar)
+        self._row_cards[project.id] = card
+        self._projects.append(project)
 
     def _install_all(self) -> None:
         if not self._installing:
             self.install_requested.emit(None, False)
 
     def _project_button(self, project: Project) -> None:
-        if project.id in self._updates:
+        if project.mobile_only:
+            self.mobile_install_requested.emit(project)
+        elif project.id in self._updates:
             self.update_requested.emit(project)
         else:
             self.install_requested.emit(project, False)
@@ -1172,6 +1244,57 @@ class InstallPage(QWidget):
     def show_latest(self) -> None:
         self.overall_bar.setValue(100)
         self.overall_label.setText("更新检查 · 已是最新，不更新")
+
+    def set_bureau(self, bureau: str) -> None:
+        android = bureau != "apple"
+        self.mumu_card.setVisible(android)
+        self.apple_notice.setVisible(not android)
+        self.apple_help.setVisible(not android)
+        for project in self._projects:
+            row = self.rows.get(project.id)
+            if row is None:
+                continue
+            visible = project.supports_bureau[0 if android else 1]
+            card = self._row_cards.get(project.id)
+            if card is not None:
+                card.setVisible(visible)
+            for widget in row:
+                widget.setVisible(visible)
+
+    def set_mumu_progress(self, value: float, message: str) -> None:
+        self.mumu_status.setText(message)
+        self.mumu_btn.setEnabled(False)
+
+    def set_mumu_ready(self, address: str = "") -> None:
+        self.mumu_status.setText("已连接" + (f" · {address}" if address else ""))
+        self.mumu_btn.setEnabled(True)
+
+    def set_mumu_failed(self, message: str) -> None:
+        self.mumu_status.setText("MuMu 连接失败：" + message)
+        self.mumu_btn.setEnabled(True)
+
+    def set_mobile_done(self, project_id: str, tag: str = "") -> None:
+        row = self.rows.get(project_id)
+        if row is None:
+            return
+        _, status, button, bar = row
+        status.setStyleSheet("")
+        status.setText("已安装到 MuMu" + (f" · {tag}" if tag else ""))
+        button.setText("重新安装")
+        bar.setValue(100)
+        self._last_errors.pop(project_id, None)
+
+    def set_mobile_failed(self, project_id: str, message: str) -> None:
+        row = self.rows.get(project_id)
+        if row is None:
+            return
+        _, status, button, bar = row
+        status.setStyleSheet(f"color: {ERROR};")
+        status.setText("安装到 MuMu 失败")
+        status.setToolTip(message)
+        button.setText("重试安装")
+        bar.setValue(0)
+
 
     def begin_install(self, projects: list[Project]) -> None:
         """进入安装状态：清空上一次结果，显示每个项目的独立进度。"""
@@ -1282,9 +1405,9 @@ class InstallPage(QWidget):
             runtime = runtimes.get(project.id)
             version = getattr(runtime, "version", "") if runtime is not None else ""
             installed = bool(project.directory and Path(project.directory).is_dir())
-            if not installed:
+            if not installed and not project.mobile_only:
                 missing = True
-            path.setText(project.directory or "未安装")
+            path.setText("MuMu 模拟器" if project.mobile_only else (project.directory or "未安装"))
             if project.id in self._last_errors:
                 status.setStyleSheet(f"color: {ERROR};")
                 status.setText("安装失败 · 可重试")
@@ -1292,6 +1415,15 @@ class InstallPage(QWidget):
                 bar.setValue(0)
                 continue
             status.setStyleSheet("")
+            if project.mobile_only:
+                if project.extra.get("mobile_installed"):
+                    status.setText("已安装到 MuMu")
+                    button.setText("重新安装")
+                else:
+                    status.setText("手机端 · 仅安卓")
+                    button.setText("安装到 MuMu")
+                bar.setValue(100 if project.extra.get("mobile_installed") else 0)
+                continue
             if installed:
                 latest = self._updates.get(project.id, "")
                 if latest:

@@ -47,6 +47,8 @@ class Config:
                     project.git_url = base.git_url
                 if not project.docs_url:
                     project.docs_url = base.docs_url
+                if not project.platforms:
+                    project.platforms = list(base.platforms)
                 merged_extra = dict(base.extra)
                 merged_extra.update(project.extra)
                 project.extra = merged_extra

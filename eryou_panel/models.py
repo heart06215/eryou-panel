@@ -72,10 +72,47 @@ class Project:
     game_process: str = ""
     game_adb: str = ""
     game_note: str = ""
+    platforms: list[str] = field(default_factory=list)  # pc | android | macos | ios
     log_dirs: list[str] = field(default_factory=list)
     git_url: str = ""
     docs_url: str = ""
     extra: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def platform_text(self) -> str:
+        values = set(self.platforms or ["pc"])
+        pc = "pc" in values
+        android = "android" in values
+        apple = "ios" in values or "macos" in values
+        if not android and not apple:
+            return "电脑端 · 仅电脑"
+        if not pc:
+            if android and not apple:
+                return "手机端 · 仅安卓"
+            if apple and not android:
+                return "手机端 · 仅苹果"
+            return "手机端 · 支持安卓/苹果"
+        supported = []
+        if android:
+            supported.append("安卓")
+        if apple:
+            supported.append("苹果")
+        return "电脑端 · 支持" + "/".join(supported)
+
+    @property
+    def mobile_only(self) -> bool:
+        values = set(self.platforms or ["pc"])
+        return "pc" not in values and ("android" in values or "ios" in values)
+
+    @property
+    def supports_bureau(self) -> tuple[bool, bool]:
+        values = set(self.platforms or ["pc"])
+        # 纯电脑端项目作为通用工具在两局显示；安卓专用/苹果专用按平台归属。
+        pc_only = values == {"pc"}
+        return (
+            "android" in values or pc_only,
+            "ios" in values or "macos" in values or pc_only,
+        )
 
     @property
     def release_url(self) -> str:
@@ -103,6 +140,7 @@ class Project:
             "game_process": self.game_process,
             "game_adb": self.game_adb,
             "game_note": self.game_note,
+            "platforms": list(self.platforms),
             "log_dirs": list(self.log_dirs),
             "git_url": self.git_url,
             "docs_url": self.docs_url,
@@ -128,6 +166,7 @@ class Project:
             game_process=str(raw.get("game_process", "")),
             game_adb=str(raw.get("game_adb", "")),
             game_note=str(raw.get("game_note", "")),
+            platforms=[str(x) for x in raw.get("platforms", []) if isinstance(x, str)],
             log_dirs=[str(x) for x in raw.get("log_dirs", []) if isinstance(x, str)],
             git_url=str(raw.get("git_url", "")),
             docs_url=str(raw.get("docs_url", "")),

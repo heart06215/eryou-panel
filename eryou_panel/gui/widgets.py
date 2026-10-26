@@ -205,7 +205,8 @@ class CompactRow(QFrame):
         info.addWidget(self.task_label)
         info.addStretch(1)
         self.metric_label.setVisible(False)
-        self.task_label.setVisible(False)
+        self.task_label.setText(project.platform_text)
+        self.task_label.setVisible(True)
         left.addLayout(info)
         layout.addLayout(left, 1)
 
@@ -233,7 +234,7 @@ class CompactRow(QFrame):
         if not self.project.directory:
             self.status.set_state("stopped", "未安装")
             self.metric_label.setText("—")
-            self.task_label.setText(adapter_mode)
+            self.task_label.setText(self.project.platform_text)
             self.action.setIcon(FluentIcon.DOWNLOAD.icon())
             self.action.setToolTip("安装")
             return
@@ -241,8 +242,7 @@ class CompactRow(QFrame):
             self.status.set_state("running", "运行中")
             self.metric_label.setText(
                 f"PID {runtime.pid}   CPU {runtime.cpu:4.1f}%   MEM {runtime.mem_mb:.0f} MB")
-            self.task_label.setText(
-                (runtime.active_task or "空闲") + "   " + human_duration(runtime.uptime()))
+            self.task_label.setText(self.project.platform_text)
             self.action.setIcon(FluentIcon.PAUSE.icon())
             self.action.setToolTip("停止")
         elif runtime.exit_code not in (None, 0):
@@ -254,7 +254,7 @@ class CompactRow(QFrame):
         else:
             self.status.set_state("stopped", "已停止")
             self.metric_label.setText("CPU —   MEM —")
-            self.task_label.setText(adapter_mode + (f" · {version}" if version else ""))
+            self.task_label.setText(self.project.platform_text)
             self.action.setIcon(FluentIcon.PLAY.icon())
             self.action.setToolTip("启动")
 
@@ -268,11 +268,13 @@ class ProjectCard(QFrame):
         self.project = project
         self.setProperty("selected", False)
         self.setCursor(Qt.PointingHandCursor)
-        self.setFixedHeight(62)
+        self.setFixedHeight(78)
 
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(14, 9, 14, 9)
-        layout.setSpacing(7)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(14, 7, 14, 7)
+        layout.setSpacing(2)
+        top = QHBoxLayout()
+        top.setSpacing(7)
         self.game = QLabel(project.game, self)
         self.game.setObjectName("GameName")
         self.name = QLabel(project.name, self)
@@ -282,10 +284,14 @@ class ProjectCard(QFrame):
         self.name.setMinimumWidth(0)
         self.name.setToolTip(project.name)
         self.game.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
-        layout.addWidget(self.game)
-        layout.addWidget(self.name, 1)
+        top.addWidget(self.game)
+        top.addWidget(self.name, 1)
         self.status = Pill("未安装", self)
-        layout.addWidget(self.status)
+        top.addWidget(self.status)
+        layout.addLayout(top)
+        self.platform_label = QLabel(project.platform_text, self)
+        self.platform_label.setObjectName("TinyLabel")
+        layout.addWidget(self.platform_label)
         self.metric_label = MetricLabel("", strong=True, parent=self)
         self.metric_label.setVisible(False)
         # 项目名只显示一次；不再重复路径、仓库和版本名。
@@ -308,6 +314,10 @@ class ProjectCard(QFrame):
 
     def update_runtime(self, runtime: Runtime, adapter_mode: str) -> None:
         version = f"v{runtime.version}" if runtime.version else ""
+        if self.project.mobile_only and self.project.extra.get("mobile_installed") and not self.project.directory:
+            self.status.set_state("running", "已安装")
+            self.metric_label.setText("手机端 · MuMu")
+            return
         if not self.project.directory:
             self.status.set_state("stopped", "未安装")
             self.metric_label.setText(adapter_mode)
