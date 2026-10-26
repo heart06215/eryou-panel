@@ -5,10 +5,10 @@ from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import QApplication
 from qfluentwidgets import Theme, setTheme, setThemeColor
 
-GOLD = "#c9a227"
-GOLD_DEEP = "#8a6d3b"
-GOLD_SOFT = "#b08d57"
-GOLD_PALE = "#f3e8cf"
+GOLD = "#c3a465"
+GOLD_DEEP = "#79623a"
+GOLD_SOFT = "#a8885c"
+GOLD_PALE = "#f2ecdf"
 
 INK = "#2b2a26"
 INK_2 = "#3f3c36"

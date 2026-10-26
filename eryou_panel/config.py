@@ -9,7 +9,7 @@ from typing import Any
 
 from .constants import DEFAULT_PROJECTS
 from .models import Project
-from .util import app_dir, atomic_write, data_dir, load_json, normalize_dir
+from .util import app_dir, atomic_write, data_dir, load_json, normalize_dir, projects_dir
 
 
 class Config:
@@ -95,7 +95,7 @@ class Config:
         raw = (self.install_root or "").strip()
         base = app_dir()
         if not raw:
-            return base
+            return projects_dir()
         path = Path(os.path.expandvars(raw)).expanduser()
         if not path.is_absolute():
             path = base / path

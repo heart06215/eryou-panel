@@ -62,7 +62,7 @@ def run_selftest() -> int:
             assert not window.tasks.gui_card.isHidden(), "原项目操作卡未显示"
             assert window.tasks.table.isHidden(), "任务表应隐藏"
             assert "打开原项目" in window.tasks.gui_btn.text()
-            assert window.tabs.count() == 4
+            assert window.tabs.count() == 2
             png = root / "gui.png"
             window.grab().save(str(png))
             assert png.is_file() and png.stat().st_size > 1000

@@ -91,9 +91,9 @@
 - 从 GitHub 最新 Release 自动选择 Windows 完整包
 - 固定安装到 `<面板目录>/<项目名>`，临时文件在 `.eryou-install-tmp/`，结束删除
 - 直连超时自动切换 `gh-proxy.com` / `ghfast.top`，支持 Range 断点续传
-- 覆盖安装先备份旧目录，失败自动回滚；写入面板目录 `.eryou-install\<项目>.json` 并回写 `panel.json`（不写入开源项目目录）
+- 覆盖安装先备份旧目录，失败自动回滚；写入面板目录 `projects\.eryou-install\<项目>.json` 并回写 `panel.json`（不写入开源项目目录）
 - 安装页显示**每个项目的独立进度条**和**总进度**；一项失败会继续安装其余项目，结束后可单独重试
-- MAA 安装仍会把 `maa-cli.exe` 放到 `maa-runtime\` 作为兼容/排障工具；原项目 MAA GUI 使用 MAA 自己的配置
+- MAA 安装仍会把 `maa-cli.exe` 放到 `projects\maa-runtime\` 作为兼容/排障工具；原项目 MAA GUI 使用 MAA 自己的配置
 
 ![按项目安装进度](assets/preview-install.png)
 
@@ -120,7 +120,7 @@
   - MAA 支持 MuMu 12；面板仍会检测 MuMu ADB，但任务和设置在 MAA 原项目内操作
   - 默认 `127.0.0.1:16384`；多开或特殊端口会自动从 `vm_config.json` 读取，也可手动改地址后“测试连接”
 
-`panel.json` 中的 `install_root` 固定为 `D:\code_project\eryou_panel`；安装器不写注册表，MAA 的 `config` / `data` 指向面板的 `maa-runtime\`，MAA 安装目录保持原样。
+`panel.json` 中的 `install_root` 固定为 `D:\code_project\eryou_panel\projects`；安装器不写注册表，MAA 的 `config` / `data` 指向面板的 `projects\maa-runtime\`，MAA 安装目录保持原样。
 
 ---
 
@@ -214,14 +214,14 @@ scripts\install_all.cmd
 
 ## 源码空间
 
-`sources/` 是独立的本地源码空间，不影响已安装项目：
+`projects/sources/` 是独立的本地源码空间，不影响已安装项目：
 
-- `sources/ok-nte/`：异环源码快照 + 运行资产
-- `sources/ok-ww-enhanced/`：鸣潮源码快照
-- `sources/ok-script/`：ok-script 框架源码
-- `sources/MAA/`：MAA 源码快照（代码，体积大的资源未下载）
+- `projects/sources/ok-nte/`：异环源码快照 + 运行资产
+- `projects/sources/ok-ww-enhanced/`：鸣潮源码快照
+- `projects/sources/ok-script/`：ok-script 框架源码
+- `projects/sources/MAA/`：MAA 源码快照（代码，体积大的资源未下载）
 
-面板配置页有“源码目录”按钮；安装页有“源码下载”卡片，可一键下载/补齐全部源码，进度显示在安装页。源码只写入 `sources/`；MAA 运行时只写入 `maa-runtime/`。详细功能对照见 `sources/FEATURES.md`。
+面板配置页有“源码目录”按钮；安装页有“源码下载”卡片，可一键下载/补齐全部源码，进度显示在安装页。源码只写入 `projects/sources/`；MAA 运行时只写入 `projects/maa-runtime/`。详细功能对照见 `projects/sources/FEATURES.md`。
 
 ## 配置文件
 
@@ -232,7 +232,7 @@ scripts\install_all.cmd
   "version": 1,
   "github_ttl": 900,
   "github_token": "",
-  "install_root": "D:\\code_project\\eryou_panel",
+  "install_root": "projects",
   "ui": {
     "compact": true,
     "always_on_top": true,
@@ -250,7 +250,7 @@ scripts\install_all.cmd
 | `history.jsonl` | 启动/停止/退出记录 |
 | `panel-logs/` | 面板启动进程的完整输出日志 |
 | `github-cache.json` | GitHub 元数据缓存 |
-| `.eryou-install/<项目>.json` | 安装标记（面板目录） |
+| `projects/.eryou-install/<项目>.json` | 安装标记（面板目录） |
 
 `install_root` 留空 = EXE 所在目录；相对路径按 EXE 目录解析。
 
@@ -388,4 +388,26 @@ requests
 
 - 有更新显示最新版本
 - 已是最新时提示“已是最新，不更新”
+
+## 目录结构
+
+所有下载的原始开源项目、源码快照和原项目运行时都集中在 `projects/`，便于整体备份、迁移和清理：
+
+```text
+D:\code_project\eryou_panel\
+├─ EryouPanel.exe
+├─ panel.json
+├─ eryou_panel/             面板源码
+├─ tests/                   测试
+├─ assets/                  图标和截图
+└─ projects/                所有开源项目集中目录
+   ├─ ok-nte/
+   ├─ ok-ww-enhanced/
+   ├─ MAA/
+   ├─ maa-runtime/          面板持有的 MAA CLI/运行数据
+   ├─ sources/              独立源码快照
+   └─ .eryou-install/       安装/版本标记
+```
+
+新安装的项目也会进入 `projects/`；面板根目录不再散落原始项目目录。
 

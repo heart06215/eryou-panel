@@ -44,10 +44,10 @@ def test_prepare_maa_configures_profile(tmp_path: Path, monkeypatch) -> None:
     project.game_adb = str(adb)
     project.extra["maa_address"] = "127.0.0.1:16384"
 
-    monkeypatch.setattr("eryou_panel.adapters.data_dir", lambda: tmp_path / "panel-data")
-    monkeypatch.setattr("eryou_panel.maa_support.data_dir", lambda: tmp_path / "panel-data")
-    (tmp_path / "panel-data" / "maa-runtime").mkdir(parents=True)
-    (tmp_path / "panel-data" / "maa-runtime" / "maa-cli.exe").write_bytes(b"MZ")
+    monkeypatch.setattr("eryou_panel.adapters.projects_dir", lambda: tmp_path / "panel-data" / "projects")
+    monkeypatch.setattr("eryou_panel.maa_support.projects_dir", lambda: tmp_path / "panel-data" / "projects")
+    (tmp_path / "panel-data" / "projects" / "maa-runtime").mkdir(parents=True)
+    (tmp_path / "panel-data" / "projects" / "maa-runtime" / "maa-cli.exe").write_bytes(b"MZ")
     monkeypatch.setattr("eryou_panel.maa_support.first_ready_device", lambda _adb, _preferred="": "127.0.0.1:16384")
     monkeypatch.setattr("eryou_panel.maa_support.start_emulator", lambda *args, **kwargs: False)
 
@@ -56,7 +56,7 @@ def test_prepare_maa_configures_profile(tmp_path: Path, monkeypatch) -> None:
                          progress=lambda value, _message: progress.append(value))
     assert result.address == "127.0.0.1:16384"
     assert Path(result.path) == maa_dir
-    profile = (tmp_path / "panel-data" / "maa-runtime" / "config" / "profiles" / "default.toml").read_text(
+    profile = (tmp_path / "panel-data" / "projects" / "maa-runtime" / "config" / "profiles" / "default.toml").read_text(
         encoding="utf-8")
     assert "127.0.0.1:16384" in profile
     assert progress and progress[-1] == 100
@@ -76,7 +76,7 @@ def test_start_mumu_waits_for_adb(tmp_path: Path, monkeypatch) -> None:
     project.game_adb = str(adb)
     project.extra["maa_address"] = "127.0.0.1:16444"
 
-    monkeypatch.setattr("eryou_panel.adapters.data_dir", lambda: tmp_path / "panel-data")
+    monkeypatch.setattr("eryou_panel.adapters.projects_dir", lambda: tmp_path / "panel-data" / "projects")
     monkeypatch.setattr("eryou_panel.maa_support.first_ready_device", lambda _adb, _preferred="": "127.0.0.1:16444")
     monkeypatch.setattr("eryou_panel.maa_support.start_emulator", lambda *args, **kwargs: False)
 
@@ -85,6 +85,6 @@ def test_start_mumu_waits_for_adb(tmp_path: Path, monkeypatch) -> None:
     assert result.address == "127.0.0.1:16444"
     assert result.adb == str(adb)
     assert progress[-1] == 100
-    profile = (tmp_path / "panel-data" / "maa-runtime" / "config" / "profiles" / "default.toml").read_text(
+    profile = (tmp_path / "panel-data" / "projects" / "maa-runtime" / "config" / "profiles" / "default.toml").read_text(
         encoding="utf-8")
     assert "127.0.0.1:16444" in profile

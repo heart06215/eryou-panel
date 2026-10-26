@@ -32,6 +32,13 @@ def data_dir() -> Path:
     return path
 
 
+def projects_dir() -> Path:
+    """所有开源项目/运行时/源码快照的统一目录。"""
+    path = data_dir() / "projects"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def ensure_dir(path: str | Path) -> Path:
     p = Path(path)
     p.mkdir(parents=True, exist_ok=True)

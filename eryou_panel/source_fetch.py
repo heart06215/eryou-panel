@@ -13,7 +13,7 @@ from typing import Callable
 
 import requests
 
-from .util import app_dir
+from .util import app_dir, projects_dir
 
 Progress = Callable[[float, str], None]
 Log = Callable[[str], None]
@@ -59,7 +59,7 @@ def _session_for_thread() -> requests.Session:
 
 
 def source_root() -> Path:
-    return app_dir() / "sources"
+    return projects_dir() / "sources"
 
 
 def _report(progress: Progress | None, value: float, message: str) -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QColor, QIcon, QPainter, QPen
 from PySide6.QtWidgets import (
     QDialog,
     QFrame,
@@ -41,6 +41,34 @@ from .theme import (
     OK,
     WARN,
 )
+
+
+class GlowProgressBar(ProgressBar):
+    """亮白荧光进度条：深色细轨 + 白色发光条。"""
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        height = max(6, self.height())
+        radius = height / 2
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(122, 112, 94, 70))
+        painter.drawRoundedRect(0, 0, self.width(), height, radius, radius)
+        maximum = self.maximum()
+        minimum = self.minimum()
+        if maximum <= minimum:
+            return
+        value = float(self.value())
+        ratio = max(0.0, min(1.0, (value - minimum) / (maximum - minimum)))
+        width = int(self.width() * ratio)
+        if width <= 0:
+            return
+        # 外层白色荧光
+        painter.setBrush(QColor(255, 255, 255, 48))
+        painter.drawRoundedRect(0, 0, width, height, radius, radius)
+        # 内层亮白条
+        painter.setBrush(QColor(255, 255, 255, 245))
+        painter.drawRoundedRect(0, 1, width, max(3, height - 2), radius, radius)
 
 
 class Card(QFrame):
@@ -83,6 +111,7 @@ class TitleBar(QWidget):
     pin_toggled = Signal(bool)
     compact_toggled = Signal()
     minimize_clicked = Signal()
+    maximize_clicked = Signal()
     close_clicked = Signal()
     settings_clicked = Signal()
 
@@ -107,18 +136,18 @@ class TitleBar(QWidget):
         layout.addStretch(1)
 
         self.pin_button = icon_button(FluentIcon.PIN, "取消置顶", self)
-        self.compact_button = icon_button(FluentIcon.CARE_DOWN_SOLID, "展开详细面板", self)
+        self.max_button = icon_button(FluentIcon.FULL_SCREEN, "最大化", self)
         self.settings_button = icon_button(FluentIcon.SETTING, "设置", self)
         self.min_button = icon_button(FluentIcon.MINIMIZE, "最小化", self)
         self.close_button = icon_button(FluentIcon.CLOSE, "隐藏到托盘", self)
-        for button in (self.pin_button, self.compact_button, self.settings_button,
+        for button in (self.pin_button, self.max_button, self.settings_button,
                        self.min_button, self.close_button):
             button.setFixedSize(36, 36)
             button.setIconSize(QSize(19, 19))
             layout.addWidget(button)
 
         self.pin_button.clicked.connect(self._on_pin)
-        self.compact_button.clicked.connect(self.compact_toggled.emit)
+        self.max_button.clicked.connect(self.maximize_clicked.emit)
         self.settings_button.clicked.connect(self.settings_clicked.emit)
         self.min_button.clicked.connect(self.minimize_clicked.emit)
         self.close_button.clicked.connect(self.close_clicked.emit)
@@ -134,10 +163,12 @@ class TitleBar(QWidget):
 
     def set_compact(self, compact: bool) -> None:
         self._compact = compact
-        self.compact_button.setIcon(
-            (FluentIcon.CARE_DOWN_SOLID if compact else FluentIcon.CARE_UP_SOLID).icon()
+
+    def set_maximized(self, maximized: bool) -> None:
+        self.max_button.setIcon(
+            (FluentIcon.BACK_TO_WINDOW if maximized else FluentIcon.FULL_SCREEN).icon()
         )
-        self.compact_button.setToolTip("展开详细面板" if compact else "收起为悬浮窗")
+        self.max_button.setToolTip("还原" if maximized else "最大化")
 
     def set_summary(self, text: str) -> None:
         self.subtitle.setText(text)
@@ -153,7 +184,7 @@ class TitleBar(QWidget):
 
     def mouseDoubleClickEvent(self, event) -> None:
         if event.button() == Qt.LeftButton:
-            self.compact_toggled.emit()
+            self.maximize_clicked.emit()
             event.accept()
             return
         super().mouseDoubleClickEvent(event)
@@ -503,7 +534,7 @@ class InstallDialog(QDialog):
         self.path_label = QLabel(self)
         self.path_label.setObjectName("DialogHint")
         self.path_label.setWordWrap(True)
-        self.progress_bar = ProgressBar(self)
+        self.progress_bar = GlowProgressBar(self)
         self.progress_bar.setValue(0)
         self.status = QLabel("准备下载…", self)
         self.status.setObjectName("DialogHint")
@@ -647,7 +678,7 @@ class InstallStatusDialog(QDialog):
             path.setWordWrap(True)
             status = QLabel("", card)
             status.setObjectName("Metric")
-            bar = ProgressBar(card)
+            bar = GlowProgressBar(card)
             bar.setValue(0)
             bar.setFixedHeight(8)
             left.addWidget(name)

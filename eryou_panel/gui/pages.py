@@ -36,9 +36,10 @@ from qfluentwidgets import (
 
 from ..adapters import Adapter
 from ..models import GithubInfo, HistoryEntry, Project, Runtime, TaskItem
+from ..updates import is_newer
 from ..util import human_duration, human_time, open_path, open_url
 from .theme import ERROR, FAINT, GOLD_DEEP, INK, MUTED, OK
-from .widgets import Card, Pill, SectionTitle, StatCard, icon_button
+from .widgets import Card, GlowProgressBar, Pill, SectionTitle, StatCard, icon_button
 
 
 def _table(parent: QWidget, columns: list[str]) -> QTableWidget:
@@ -500,7 +501,7 @@ class TasksPage(QWidget):
         self.maa_status = QLabel("未准备 · 点击“一键日常”自动完成安装、连接和执行", self.maa_card)
         self.maa_status.setObjectName("TinyLabel")
         maa_layout.addWidget(self.maa_status)
-        self.maa_progress = ProgressBar(self.maa_card)
+        self.maa_progress = GlowProgressBar(self.maa_card)
         self.maa_progress.setValue(0)
         self.maa_progress.setFixedHeight(8)
         self.maa_progress.setVisible(False)
@@ -1036,6 +1037,7 @@ class InstallPage(QWidget):
         self._active_ids: set[str] = set()
         self._last_errors: dict[str, str] = {}
         self._updates: dict[str, str] = {}
+        self._latest_ids: set[str] = set()
         self._projects = list(projects)
         self._row_cards = {}
 
@@ -1065,7 +1067,7 @@ class InstallPage(QWidget):
         self.overall_label = QLabel("总进度 · 等待安装", self)
         self.overall_label.setObjectName("PageHint")
         self.overall_label.setMinimumWidth(190)
-        self.overall_bar = ProgressBar(self)
+        self.overall_bar = GlowProgressBar(self)
         self.overall_bar.setValue(0)
         overall.addWidget(self.overall_label)
         overall.addWidget(self.overall_bar, 1)
@@ -1126,7 +1128,7 @@ class InstallPage(QWidget):
             path.setWordWrap(True)
             status = QLabel("", card)
             status.setObjectName("Metric")
-            bar = ProgressBar(card)
+            bar = GlowProgressBar(card)
             bar.setValue(0)
             bar.setFixedHeight(8)
             left.addWidget(game)
@@ -1162,7 +1164,7 @@ class InstallPage(QWidget):
         self.source_status = QLabel("源码快照：等待下载", self.source_card)
         self.source_status.setObjectName("TinyLabel")
         source_layout.addWidget(self.source_status)
-        self.source_bar = ProgressBar(self.source_card)
+        self.source_bar = GlowProgressBar(self.source_card)
         self.source_bar.setValue(0)
         self.source_bar.setFixedHeight(8)
         source_layout.addWidget(self.source_bar)
@@ -1189,7 +1191,7 @@ class InstallPage(QWidget):
         path.setWordWrap(True)
         status = QLabel("", card)
         status.setObjectName("Metric")
-        bar = ProgressBar(card)
+        bar = GlowProgressBar(card)
         bar.setValue(0)
         bar.setFixedHeight(8)
         left.addWidget(game)
@@ -1232,6 +1234,7 @@ class InstallPage(QWidget):
     def set_update_available(self, project_id: str, latest_tag: str,
                              current: str = "") -> None:
         self._updates[project_id] = latest_tag
+        self._latest_ids.discard(project_id)
         row = self.rows.get(project_id)
         if row is None:
             return
@@ -1245,20 +1248,25 @@ class InstallPage(QWidget):
     def clear_update(self, project_id: str) -> None:
         self._updates.pop(project_id, None)
 
+    def mark_latest(self, project_id: str) -> None:
+        self._updates.pop(project_id, None)
+        self._latest_ids.add(project_id)
+
     def show_latest(self) -> None:
         self.overall_bar.setValue(100)
         self.overall_label.setText("更新检查 · 已是最新，不更新")
 
     def set_bureau(self, bureau: str) -> None:
-        android = bureau != "apple"
+        android = bureau == "android"
+        apple = bureau == "apple"
         self.mumu_card.setVisible(android)
-        self.apple_notice.setVisible(not android)
-        self.apple_help.setVisible(not android)
+        self.apple_notice.setVisible(apple)
+        self.apple_help.setVisible(apple)
         for project in self._projects:
             row = self.rows.get(project.id)
             if row is None:
                 continue
-            visible = project.supports_bureau[0 if android else 1]
+            visible = project.visible_in_bureau(bureau)
             card = self._row_cards.get(project.id)
             if card is not None:
                 card.setVisible(visible)
@@ -1346,6 +1354,7 @@ class InstallPage(QWidget):
             return
         self._last_errors.pop(project_id, None)
         self._updates.pop(project_id, None)
+        self._latest_ids.discard(project_id)
         _, status, button, bar = row
         status.setStyleSheet("")
         status.setText("安装完成" + (f" · {tag}" if tag else ""))
@@ -1430,12 +1439,26 @@ class InstallPage(QWidget):
                 continue
             if installed:
                 latest = self._updates.get(project.id, "")
-                if latest:
+                latest_info = ""
+                github_info = getattr(runtime, "github", None)
+                if github_info is not None:
+                    latest_info = str(getattr(github_info, "latest_tag", "") or "")
+                if latest or (latest_info and version and is_newer(latest_info, version)):
+                    latest = latest or latest_info
                     status.setText(f"已安装 v{version} · 可更新 {latest}")
                     status.setToolTip(f"最新版本 {latest}；更新会保留用户配置")
                     button.setText("更新")
+                elif project.id in self._latest_ids or (
+                    latest_info and version and not is_newer(latest_info, version)
+                ):
+                    status.setText(
+                        ("已安装 v" + version if version else "已安装")
+                        + " · 版本已至最新")
+                    status.setToolTip("GitHub 最新 Release 与当前版本一致")
+                    button.setText("覆盖安装")
                 else:
                     status.setText("已安装" + (f" · v{version}" if version else ""))
+                    status.setToolTip("点击“检查更新”获取 GitHub 最新版本")
                     button.setText("覆盖安装")
                 bar.setValue(100)
             else:

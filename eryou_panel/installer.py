@@ -24,7 +24,7 @@ from typing import Callable
 from .config import Config
 from .discovery import EXE_HINTS, probe
 from .models import Project
-from .util import data_dir
+from .util import data_dir, projects_dir
 
 Progress = Callable[[float, str], None]
 Log = Callable[[str], None]
@@ -587,7 +587,7 @@ def install_project(project: Project, root: Path, force: bool = False, token: st
         _write_marker(target, project, release, asset, app_root)
         if project.id == "maa":
             try:
-                runtime = data_dir() / "maa-runtime"
+                runtime = projects_dir() / "maa-runtime"
                 runtime.mkdir(parents=True, exist_ok=True)
                 install_maa_cli(runtime, work, token, log)
             except Exception as exc:

@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 
 from .models import Project
-from .util import app_dir
+from .util import app_dir, projects_dir
 
 _CLASS_RE = re.compile(r"^class\s+(\w+)", re.M)
 _NAME_RE = re.compile(r"^\s+self\.name\s*=\s*(['\"])(.*?)\1", re.M)
@@ -46,7 +46,7 @@ _cache: dict[str, dict[str, str]] = {}
 
 
 def _task_folders(project_id: str) -> list[Path]:
-    root = app_dir() / "sources"
+    root = projects_dir() / "sources"
     if project_id == "ok-nte":
         return [root / "ok-nte" / "src" / "tasks"]
     if project_id == "ok-ww-enhanced":

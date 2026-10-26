@@ -46,7 +46,7 @@ def test_gui_window(config: Config, tmp_path: Path, monkeypatch) -> None:
     try:
         window.show()
         app.processEvents()
-        assert window.tabs.count() == 4
+        assert window.tabs.count() == 2
         assert not window.tasks.gui_card.isHidden()
         assert window.tasks.table.isHidden()
         assert "打开原项目" in window.tasks.gui_btn.text()

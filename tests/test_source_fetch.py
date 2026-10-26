@@ -11,9 +11,9 @@ from eryou_panel import source_fetch
 
 
 def test_source_status(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setattr(source_fetch, "app_dir", lambda: tmp_path)
+    monkeypatch.setattr(source_fetch, "projects_dir", lambda: tmp_path / "projects")
     for name in ("ok-nte", "ok-ww-enhanced"):
-        folder = tmp_path / "sources" / name
+        folder = tmp_path / "projects" / "sources" / name
         folder.mkdir(parents=True)
         (folder / "main.py").write_text("print('x')", encoding="utf-8")
         (folder / "SOURCE_MANIFEST.json").write_text(

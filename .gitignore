@@ -19,14 +19,14 @@ panel-logs/
 !tests/fixtures/**/*.log
 
 # 已安装的第三方工具（体积大，不入库）
-/ok-nte/
-/ok-ww-enhanced/
-/MAA/
 .eryou-install-tmp/
 
 # 临时文件
 *.tmp
 *.bak
+
+# 所有开源项目、源码快照和运行时
+/projects/
 
 # 构建产物与本地面板状态
 /EryouPanel.exe
@@ -35,8 +35,6 @@ panel-logs/
 /.eryou-install-tmp/
 
 # 已安装的原项目与本地源码/运行时
-/sources/
-/maa-runtime/
 /BetterGI/
 /March7thAssistant/
 /AzurLaneAutoScript/

@@ -3,7 +3,7 @@
   "poll_interval": 1.0,
   "github_ttl": 900,
   "github_token": "",
-  "install_root": "",
+  "install_root": "projects",
   "projects": [
     {
       "id": "ok-nte",
@@ -58,8 +58,13 @@
       "git_url": "https://github.com/MaaAssistantArknights/MaaAssistantArknights",
       "docs_url": "https://maa.plus/docs/",
       "extra": {
-        "exe_hints": ["MAA.exe"],
-        "cli_hints": ["maa.exe", "maa-cli.exe"]
+        "exe_hints": [
+          "MAA.exe"
+        ],
+        "cli_hints": [
+          "maa.exe",
+          "maa-cli.exe"
+        ]
       }
     }
   ]

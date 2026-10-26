@@ -16,7 +16,7 @@ from typing import Callable
 from .adapters import MaaAdapter
 from .installer import install_maa_cli, install_project
 from .models import Project
-from .util import data_dir, which
+from .util import data_dir, projects_dir, which
 from .winproc import list_processes
 
 Progress = Callable[[float, str], None]
@@ -381,7 +381,7 @@ def prepare_maa(project: Project, root: Path, token: str = "", preferred_address
         work = root / ".eryou-install-tmp" / f"maa-cli-{int(time.time())}"
         work.mkdir(parents=True, exist_ok=True)
         try:
-            runtime = data_dir() / "maa-runtime"
+            runtime = projects_dir() / "maa-runtime"
             runtime.mkdir(parents=True, exist_ok=True)
             install_maa_cli(runtime, work, token, log)
         finally:

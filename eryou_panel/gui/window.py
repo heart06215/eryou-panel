@@ -169,7 +169,7 @@ class FloatingPanel(AcrylicWindow):
         self._mobile_worker: MobileInstallWorker | None = None
         self._mobile_permissions: set[str] = set()
         self._displays: list = []
-        self._bureau = "android"
+        self._bureau = "pc"
         self._maa_setup_project_id = ""
 
         self.setWindowTitle("二游面板")
@@ -189,7 +189,7 @@ class FloatingPanel(AcrylicWindow):
         self._select_project(self.selected_id, force=True)
         self._tick()
         self.install_page.set_auto_update(bool(self.config.ui.get("auto_update", False)))
-        self._set_bureau("android")
+        self._set_bureau("pc")
         QTimer.singleShot(400, self._refresh_source_status)
         QTimer.singleShot(500, lambda: self._scan_games(False))
         QTimer.singleShot(250, self._first_show)
@@ -274,19 +274,26 @@ class FloatingPanel(AcrylicWindow):
         sidebar_outer = QVBoxLayout(sidebar)
         sidebar_outer.setContentsMargins(0, 0, 0, 0)
         sidebar_outer.setSpacing(8)
+        head = QHBoxLayout()
         label = QLabel("项目", sidebar)
         label.setObjectName("SectionTitle")
-        sidebar_outer.addWidget(label)
+        sub = QLabel("支持设备的项目", sidebar)
+        sub.setObjectName("TinyLabel")
+        head.addWidget(label)
+        head.addWidget(sub)
+        head.addStretch(1)
+        sidebar_outer.addLayout(head)
         bureau_row = QHBoxLayout()
-        bureau_row.setSpacing(6)
-        self.bureau_android = PushButton("安卓总局", sidebar)
-        self.bureau_apple = PushButton("苹果总局", sidebar)
+        bureau_row.setSpacing(4)
+        self.bureau_android = PushButton("安卓", sidebar)
+        self.bureau_apple = PushButton("苹果", sidebar)
+        self.bureau_pc = PushButton("电脑端", sidebar)
         self.bureau_android.clicked.connect(lambda: self._set_bureau("android"))
         self.bureau_apple.clicked.connect(lambda: self._set_bureau("apple"))
-        self.bureau_android.setMinimumHeight(32)
-        self.bureau_apple.setMinimumHeight(32)
-        bureau_row.addWidget(self.bureau_android, 1)
-        bureau_row.addWidget(self.bureau_apple, 1)
+        self.bureau_pc.clicked.connect(lambda: self._set_bureau("pc"))
+        for button in (self.bureau_android, self.bureau_apple, self.bureau_pc):
+            button.setMinimumHeight(30)
+            bureau_row.addWidget(button, 1)
         sidebar_outer.addLayout(bureau_row)
         scroll = QScrollArea(sidebar)
         scroll.setWidgetResizable(True)
@@ -324,23 +331,47 @@ class FloatingPanel(AcrylicWindow):
         sidebar_outer.addWidget(self.side_settings)
         layout.addWidget(sidebar)
 
-        self.tabs = QTabWidget(page)
+        self.global_bar = QWidget(page)
+        global_layout = QHBoxLayout(self.global_bar)
+        global_layout.setContentsMargins(0, 0, 0, 4)
+        global_layout.setSpacing(8)
+        self.global_update = PushButton(FluentIcon.SYNC, "更新", self.global_bar)
+        self.global_display = PushButton(FluentIcon.SETTING, "显示", self.global_bar)
+        for button in (self.global_update, self.global_display):
+            button.setMinimumHeight(38)
+            button.setMinimumWidth(110)
+            button.setStyleSheet("font-size:14px;")
+            global_layout.addWidget(button)
+        global_layout.addStretch(1)
+
+        self.content_stack = QStackedWidget(page)
+        self.tabs = QTabWidget(self.content_stack)
+        self.project_tabs = self.tabs
         self.tabs.setDocumentMode(True)
         self.overview = OverviewPage(self.tabs)
-        self.tasks = TasksPage(self.tabs)  # 仅保留内部状态对象，不再单独成页
+        self.tasks = TasksPage(self.tabs)
         self.tasks.setVisible(False)
         self.logs = LogsPage(self.tabs)
-        self.config_page = ConfigPage(self.tabs)
-        self.install_page = InstallPage(self.config.projects, self.tabs)
         self.tabs.addTab(self.overview, "项目")
-        self.tabs.addTab(self.install_page, "更新")
-        self.tabs.addTab(self.config_page, "显示")
         self.tabs.addTab(self.logs, "日志")
-        self.tabs.tabBar().setMinimumHeight(40)
+        self.tabs.tabBar().setMinimumHeight(36)
         self.tabs.setStyleSheet(
-            "QTabBar::tab { min-width: 92px; height: 38px; font-size: 14px; padding: 0 18px; }"
+            "QTabBar::tab { min-width: 84px; height: 34px; font-size: 13px; padding: 0 16px; }"
         )
-        layout.addWidget(self.tabs, 1)
+        self.install_page = InstallPage(self.config.projects, page)
+        self.config_page = ConfigPage(page)
+        self.content_stack.addWidget(self.tabs)
+        self.content_stack.addWidget(self.install_page)
+        self.content_stack.addWidget(self.config_page)
+        self.global_update.clicked.connect(lambda: self._show_global("update"))
+        self.global_display.clicked.connect(lambda: self._show_global("display"))
+        right = QWidget(page)
+        right_layout = QVBoxLayout(right)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(4)
+        right_layout.addWidget(self.global_bar)
+        right_layout.addWidget(self.content_stack, 1)
+        layout.addWidget(right, 1)
         return page
 
     def _build_tray(self) -> None:
@@ -376,6 +407,7 @@ class FloatingPanel(AcrylicWindow):
         self.title_bar.pin_toggled.connect(self.set_topmost)
         self.title_bar.compact_toggled.connect(lambda: self.set_compact(not self._compact))
         self.title_bar.minimize_clicked.connect(self.showMinimized)
+        self.title_bar.maximize_clicked.connect(self._toggle_maximize)
         self.title_bar.close_clicked.connect(self._close_clicked)
         self.title_bar.settings_clicked.connect(self._open_settings)
         for row in self.compact_rows.values():
@@ -607,6 +639,16 @@ class FloatingPanel(AcrylicWindow):
     def _set_topmost_from_menu(self, checked: bool) -> None:
         self.set_topmost(checked)
 
+    def _toggle_maximize(self) -> None:
+        if self.isMaximized():
+            self.showNormal()
+            self.title_bar.set_maximized(False)
+        else:
+            if self._compact:
+                self.set_compact(False)
+            self.showMaximized()
+            self.title_bar.set_maximized(True)
+
     def _open_detail(self, project_id: str) -> None:
         self._select_project(project_id)
         self.set_compact(False)
@@ -614,18 +656,20 @@ class FloatingPanel(AcrylicWindow):
 
     def _open_tab(self, index: int) -> None:
         self.set_compact(False)
-        self.tabs.setCurrentIndex(index)
+        if index == 1:
+            self._show_global("update")
+        elif index == 2:
+            self._show_global("display")
+        elif index == 3:
+            self._show_project_view()
+            self.project_tabs.setCurrentIndex(1)
+        else:
+            self._show_project_view()
+            self.project_tabs.setCurrentIndex(0)
 
     def _tab_changed(self, index: int) -> None:
         if index == 1:
-            self._refresh_selected_tasks()
-        elif index == 2:
             self._refresh_logs()
-        elif index == 3:
-            self._refresh_selected_config()
-        elif index == 4:
-            self.install_page.update_projects(self.config.projects, self.controller.runtimes,
-                                              self.config.install_root_path())
 
     # ---- 数据刷新 -------------------------------------------------
     def _load_tasks(self) -> None:
@@ -700,6 +744,7 @@ class FloatingPanel(AcrylicWindow):
         self._refresh_selected()
         self._refresh_logs()
         self._refresh_github(project_id, False)
+        self._show_project_view()
         project = self.config.get(project_id)
         if project is not None and project.mobile_only and project.id not in self._mobile_permissions:
             QTimer.singleShot(120, lambda p=project: self._ask_mobile_permission(p))
@@ -988,7 +1033,8 @@ class FloatingPanel(AcrylicWindow):
             self._open_project_gui()
         else:
             self.set_compact(False)
-            self.tabs.setCurrentIndex(0)
+            self._show_project_view()
+            self.project_tabs.setCurrentIndex(0)
 
     def _start_selected_action(self) -> None:
         selected = self._selected()
@@ -1097,7 +1143,8 @@ class FloatingPanel(AcrylicWindow):
         self._select_project(runtime.project.id, force=True)
         self._refresh_selected()
         self.set_compact(False)
-        self.tabs.setCurrentIndex(0)
+        self._show_project_view()
+        self.project_tabs.setCurrentIndex(0)
         self._refresh_logs()
         self._info(f"{runtime.project.game} · {message}")
 
@@ -1587,7 +1634,10 @@ class FloatingPanel(AcrylicWindow):
                 self.install_page.set_update_available(
                     info.project_id, info.latest_tag, info.current)
             else:
-                self.install_page.clear_update(info.project_id)
+                if getattr(info, "error", ""):
+                    self.install_page.clear_update(info.project_id)
+                else:
+                    self.install_page.mark_latest(info.project_id)
             if getattr(info, "error", ""):
                 errors.append(f"{info.project_name}: {info.error}")
         if updates:
@@ -1605,6 +1655,8 @@ class FloatingPanel(AcrylicWindow):
                 self._start_inline_install(projects, True)
             else:
                 self._info("有更新，但原项目正在运行；请先关闭原项目")
+        self.install_page.update_projects(
+            self.config.projects, self.controller.runtimes, self.config.install_root_path())
         if errors:
             self._info("部分项目检查失败：" + "；".join(errors[:3]))
 
@@ -1816,7 +1868,7 @@ class FloatingPanel(AcrylicWindow):
         dialog.exec()
         if dialog.open_page:
             self.set_compact(False)
-            self.tabs.setCurrentIndex(1)
+            self._show_global("update")
 
     def _install_projects(self, project_id: str | None, force: bool = False) -> None:
         if self._install_worker is not None:
@@ -1856,7 +1908,7 @@ class FloatingPanel(AcrylicWindow):
 
     def _start_inline_install(self, projects: list[Project], force: bool = False) -> None:
         self.set_compact(False)
-        self.tabs.setCurrentIndex(1)
+        self._show_global("update")
         self.install_page.begin_install(projects)
         worker = InstallWorker(projects, self.config.install_root_path(),
                                self.config.github_token, force, self)
@@ -1956,16 +2008,37 @@ class FloatingPanel(AcrylicWindow):
             pass
 
     # ---- 设置 -----------------------------------------------------
+    def _show_global(self, kind: str) -> None:
+        self.project_tabs.setVisible(False)
+        if kind == "update":
+            self.content_stack.setCurrentWidget(self.install_page)
+            if self._update_worker is None and self._install_worker is None:
+                QTimer.singleShot(120, lambda: self._check_updates(False))
+            self.global_update.setStyleSheet("font-size:14px; font-weight:700;")
+            self.global_display.setStyleSheet("font-size:14px;")
+        else:
+            self.content_stack.setCurrentWidget(self.config_page)
+            self.global_display.setStyleSheet("font-size:14px; font-weight:700;")
+            self.global_update.setStyleSheet("font-size:14px;")
+        self.global_update.setVisible(True)
+        self.global_display.setVisible(True)
+
+    def _show_project_view(self) -> None:
+        self.project_tabs.setVisible(True)
+        self.content_stack.setCurrentWidget(self.project_tabs)
+        self.global_update.setStyleSheet("font-size:14px;")
+        self.global_display.setStyleSheet("font-size:14px;")
+
     def _set_bureau(self, bureau: str) -> None:
         if bureau not in ("android", "apple"):
             return
         self._bureau = bureau
-        android = bureau == "android"
-        self.bureau_android.setStyleSheet("font-weight:700;" if android else "")
-        self.bureau_apple.setStyleSheet("" if android else "font-weight:700;")
+        for key, button in (("android", self.bureau_android),
+                            ("apple", self.bureau_apple), ("pc", self.bureau_pc)):
+            button.setStyleSheet("font-weight:700;" if bureau == key else "")
         visible_ids = []
         for project in self.config.projects:
-            visible = project.supports_bureau[0 if android else 1]
+            visible = project.visible_in_bureau(bureau)
             card = self.cards.get(project.id)
             if card is not None:
                 card.setVisible(visible)

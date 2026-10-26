@@ -12,7 +12,7 @@ from pathlib import Path
 from .constants import MAA_PRESETS, STATIC_TASKS, TASK_NAMES
 from .discovery import EXE_HINTS, find_exe, find_exe_any
 from .models import Project, TaskItem
-from .util import data_dir, python_candidates, read_text, which
+from .util import data_dir, projects_dir, python_candidates, read_text, which
 from .winproc import file_version
 
 
@@ -342,7 +342,7 @@ class MaaAdapter(Adapter):
 
     def runtime_dir(self) -> Path:
         """面板自己的 MAA 配置/数据目录，不写入开源 MAA 目录。"""
-        path = data_dir() / "maa-runtime"
+        path = projects_dir() / "maa-runtime"
         path.mkdir(parents=True, exist_ok=True)
         return path
 

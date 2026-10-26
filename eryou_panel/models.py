@@ -104,6 +104,14 @@ class Project:
         values = set(self.platforms or ["pc"])
         return "pc" not in values and ("android" in values or "ios" in values)
 
+    def visible_in_bureau(self, bureau: str) -> bool:
+        values = set(self.platforms or ["pc"])
+        if bureau == "android":
+            return "android" in values
+        if bureau == "apple":
+            return "ios" in values or "macos" in values
+        return "pc" in values
+
     @property
     def supports_bureau(self) -> tuple[bool, bool]:
         values = set(self.platforms or ["pc"])

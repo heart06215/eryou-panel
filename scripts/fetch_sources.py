@@ -15,7 +15,7 @@ from pathlib import Path
 import requests
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCES = ROOT / "sources"
+SOURCES = ROOT / "projects" / "sources"
 API = "https://api.github.com"
 RAW = "https://raw.githubusercontent.com"
 UA = "eryou-panel-source-snapshot/1.0"
