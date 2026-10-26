@@ -207,6 +207,7 @@ class Runtime:
     log_lines: list[str] = field(default_factory=list)
     active_task: str = ""
     version: str = ""
+    initialized: bool = True
     game_running: bool = False
     history: list[HistoryEntry] = field(default_factory=list)
 

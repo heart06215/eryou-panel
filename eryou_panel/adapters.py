@@ -156,6 +156,8 @@ class OkScriptAdapter(Adapter):
     def mode_text(self) -> str:
         if not self.available:
             return "未安装"
+        if not self.initialized:
+            return "启动器已安装 · 需首次初始化"
         runner = self.runner()
         if runner == "exe":
             return "打包版 EXE"
@@ -163,7 +165,30 @@ class OkScriptAdapter(Adapter):
             return "源码 · Python"
         return "缺少主程序"
 
+    def _app_json(self) -> dict:
+        if not self.root:
+            return {}
+        candidates = list(self.root.glob("data/apps/*/app.json"))
+        candidates.append(self.root / "app.json")
+        for path in candidates:
+            try:
+                data = json.loads(read_text(path, 500_000))
+            except (OSError, ValueError):
+                continue
+            if isinstance(data, dict):
+                return data
+        return {}
+
+    @property
+    def initialized(self) -> bool:
+        data = self._app_json()
+        return bool(data.get("installed")) and bool(data.get("current_version"))
+
     def version(self) -> str:
+        data = self._app_json()
+        value = str(data.get("current_version") or "").strip()
+        if value:
+            return value.lstrip("vV")
         if self.root:
             candidates = list(self.root.glob("data/apps/*/app.json"))
             candidates.append(self.root / "app.json")

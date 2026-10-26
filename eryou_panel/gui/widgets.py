@@ -260,8 +260,13 @@ class CompactRow(QFrame):
         self.style().unpolish(self)
         self.style().polish(self)
 
-    def update_runtime(self, runtime: Runtime, adapter_mode: str) -> None:
+    def update_runtime(self, runtime: Runtime, adapter_mode: str,
+                       initialized: bool = True) -> None:
         version = f"v{runtime.version}" if runtime.version else ""
+        if self.project.directory and not initialized:
+            self.status.set_state("warn", "需初始化")
+            self.metric_label.setText("启动器已安装")
+            return
         if not self.project.directory:
             self.status.set_state("stopped", "未安装")
             self.metric_label.setText("—")
@@ -343,11 +348,16 @@ class ProjectCard(QFrame):
         self.style().unpolish(self)
         self.style().polish(self)
 
-    def update_runtime(self, runtime: Runtime, adapter_mode: str) -> None:
+    def update_runtime(self, runtime: Runtime, adapter_mode: str,
+                       initialized: bool = True) -> None:
         version = f"v{runtime.version}" if runtime.version else ""
         if self.project.mobile_only and self.project.extra.get("mobile_installed") and not self.project.directory:
             self.status.set_state("running", "已安装")
             self.metric_label.setText("手机端 · MuMu")
+            return
+        if self.project.directory and not initialized:
+            self.status.set_state("warn", "需初始化")
+            self.metric_label.setText("启动器已安装")
             return
         if not self.project.directory:
             self.status.set_state("stopped", "未安装")

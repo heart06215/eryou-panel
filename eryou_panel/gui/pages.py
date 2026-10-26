@@ -259,6 +259,8 @@ class OverviewPage(QWidget):
             self.status.set_state("running", "已安装到 MuMu")
         elif not project.directory:
             self.status.set_state("stopped", "未安装")
+        elif not getattr(runtime, "initialized", True):
+            self.status.set_state("warn", "需初始化")
         elif runtime.status == "running":
             self.status.set_state("running", "运行中")
         elif runtime.exit_code not in (None, 0):
@@ -352,7 +354,9 @@ class OverviewPage(QWidget):
                 self.install_btn.setText("一键安装")
 
     def update_live(self, runtime: Runtime) -> None:
-        if runtime.status == "running":
+        if not getattr(runtime, "initialized", True):
+            self.status.set_state("warn", "需初始化")
+        elif runtime.status == "running":
             self.stat_cpu.set_value(f"{runtime.cpu:.1f}%")
             self.stat_mem.set_value(f"{runtime.mem_mb:.0f} MB")
             self.stat_uptime.set_value(human_duration(runtime.uptime()))
@@ -1026,6 +1030,7 @@ class InstallPage(QWidget):
     mobile_install_requested = Signal(object)
     mumu_requested = Signal()
     apple_help_requested = Signal()
+    open_gui_requested = Signal(object)
     mumu_site_requested = Signal()
     refresh_requested = Signal()
     source_requested = Signal()
@@ -1038,6 +1043,7 @@ class InstallPage(QWidget):
         self._last_errors: dict[str, str] = {}
         self._updates: dict[str, str] = {}
         self._latest_ids: set[str] = set()
+        self._needs_init: set[str] = set()
         self._projects = list(projects)
         self._row_cards = {}
 
@@ -1216,7 +1222,9 @@ class InstallPage(QWidget):
             self.install_requested.emit(None, False)
 
     def _project_button(self, project: Project) -> None:
-        if project.mobile_only:
+        if project.id in self._needs_init:
+            self.open_gui_requested.emit(project)
+        elif project.mobile_only:
             self.mobile_install_requested.emit(project)
         elif project.id in self._updates:
             self.update_requested.emit(project)
@@ -1235,6 +1243,7 @@ class InstallPage(QWidget):
                              current: str = "") -> None:
         self._updates[project_id] = latest_tag
         self._latest_ids.discard(project_id)
+        self._needs_init.discard(project_id)
         row = self.rows.get(project_id)
         if row is None:
             return
@@ -1417,7 +1426,16 @@ class InstallPage(QWidget):
             path, status, button, bar = row
             runtime = runtimes.get(project.id)
             version = getattr(runtime, "version", "") if runtime is not None else ""
-            installed = bool(project.directory and Path(project.directory).is_dir())
+            initialized = bool(getattr(runtime, "initialized", True))
+            installed = bool(project.directory and Path(project.directory).is_dir() and initialized)
+            if project.directory and Path(project.directory).is_dir() and not initialized:
+                self._needs_init.add(project.id)
+                status.setStyleSheet("")
+                status.setText("启动器已安装 · 首次启动需初始化")
+                button.setText("打开初始化")
+                bar.setValue(0)
+                continue
+            self._needs_init.discard(project.id)
             if not installed and not project.mobile_only:
                 missing = True
             path.setText("MuMu 模拟器" if project.mobile_only else (project.directory or "未安装"))

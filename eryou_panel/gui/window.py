@@ -460,6 +460,7 @@ class FloatingPanel(AcrylicWindow):
         self.install_page.update_check_requested.connect(lambda: self._check_updates(False))
         self.install_page.auto_update_changed.connect(self._auto_update_changed)
         self.install_page.mobile_install_requested.connect(self._install_mobile_project)
+        self.install_page.open_gui_requested.connect(self._open_project_by_id)
         self.install_page.mumu_requested.connect(self._connect_mumu)
         self.install_page.apple_help_requested.connect(
             lambda: open_url("https://docs.maa.plus/zh-cn/manual/device/macos.html"))
@@ -683,16 +684,17 @@ class FloatingPanel(AcrylicWindow):
         for project in self.config.projects:
             runtime = self.controller.runtimes[project.id]
             adapter = self.controller.adapters[project.id]
+            runtime.initialized = bool(getattr(adapter, "initialized", True))
             names = [n.strip().lower() for n in (project.game_process or "").split(";") if n.strip()]
             runtime.game_running = bool(names and any(name in proc_names for name in names))
             if runtime.status == "running":
                 running += 1
             row = self.compact_rows.get(project.id)
             if row is not None:
-                row.update_runtime(runtime, adapter.mode_text())
+                row.update_runtime(runtime, adapter.mode_text(), runtime.initialized)
             card = self.cards.get(project.id)
             if card is not None:
-                card.update_runtime(runtime, adapter.mode_text())
+                card.update_runtime(runtime, adapter.mode_text(), runtime.initialized)
         total = len(self.config.projects)
         if self._compact:
             self.title_bar.set_summary(f"{running}/{total}")
@@ -702,8 +704,9 @@ class FloatingPanel(AcrylicWindow):
         self.side_summary.setText(f"{total} 个项目 · {running} 个运行中")
         installed = sum(
             1 for project in self.config.projects
-            if (project.directory and Path(project.directory).is_dir())
-            or (project.mobile_only and project.extra.get("mobile_installed"))
+            if ((project.directory and Path(project.directory).is_dir()
+                 and self.controller.runtimes[project.id].initialized)
+                or (project.mobile_only and project.extra.get("mobile_installed")))
         )
         if self._install_worker is not None:
             install_text = "安装情况 · 安装中"
@@ -737,6 +740,10 @@ class FloatingPanel(AcrylicWindow):
         if project_id == self.selected_id and not force:
             return
         self.selected_id = project_id
+        selected_runtime = self.controller.runtimes.get(project_id)
+        selected_adapter = self.controller.adapters.get(project_id)
+        if selected_runtime is not None and selected_adapter is not None:
+            selected_runtime.initialized = bool(getattr(selected_adapter, "initialized", True))
         for pid, card in self.cards.items():
             card.set_selected(pid == project_id)
         for pid, row in self.compact_rows.items():
@@ -1110,6 +1117,10 @@ class FloatingPanel(AcrylicWindow):
     def _gui_queue_failed(self, message: str) -> None:
         self.tasks.command_hint.setText("原项目 GUI 自动操作失败；可点“打开原项目界面”手动执行")
         self._error("原项目 GUI 操作失败：" + message)
+
+    def _open_project_by_id(self, project: Project) -> None:
+        self._select_project(project.id, force=True)
+        self._open_project_gui()
 
     def _open_project_gui(self) -> None:
         selected = self._selected()
