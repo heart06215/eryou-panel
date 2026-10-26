@@ -43,3 +43,7 @@ panel-logs/
 /HonkaiHelper/
 /ok-gf2/
 /ZenlessZoneZero-OneDragon/
+
+# local UI smoke files
+/_ui*.py
+/_ui*.png
