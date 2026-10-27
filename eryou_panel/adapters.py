@@ -365,6 +365,15 @@ class MaaAdapter(Adapter):
             return str(gui)
         return ""
 
+    @property
+    def initialized(self) -> bool:
+        return bool(
+            self.available
+            and self.gui_exe()
+            and (self.root / "MaaCore.dll").is_file()
+            and (self.root / "resource").is_dir()
+        )
+
     def runtime_dir(self) -> Path:
         """面板自己的 MAA 配置/数据目录，不写入开源 MAA 目录。"""
         path = projects_dir() / "maa-runtime"
@@ -459,6 +468,8 @@ class MaaAdapter(Adapter):
     def mode_text(self) -> str:
         if not self.available:
             return "未安装"
+        if not self.initialized:
+            return "MAA 已安装 · 需初始化"
         return "原项目 GUI · MAA"
 
     def gui_command(self) -> list[str]:
