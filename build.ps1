@@ -60,6 +60,7 @@ New-Item -ItemType Directory -Force "$root\build" | Out-Null
     --icon "$root\assets\panel.ico" `
     --collect-all qfluentwidgets --collect-all qframelesswindow `
     --collect-all pywinauto --collect-all comtypes `
+    --collect-all py7zr `
     --add-data "$root\assets;assets" `
     --exclude-module PIL --exclude-module numpy --exclude-module pygments.formatters.img `
     --exclude-module textual `

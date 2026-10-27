@@ -24,7 +24,7 @@ from typing import Callable
 from .config import Config
 from .discovery import EXE_HINTS, probe
 from .models import Project
-from .util import data_dir, projects_dir
+from .util import data_dir, projects_dir, resource_path
 
 Progress = Callable[[float, str], None]
 Log = Callable[[str], None]
@@ -361,7 +361,27 @@ def extract_archive(archive: Path, destination: Path, log: Log | None = None) ->
                            creationflags=0x08000000)
             return
         except (OSError, subprocess.SubprocessError) as exc:
-            raise InstallError("7z 解压失败，请手动解压或在系统安装 tar/7-Zip") from exc
+            if archive.suffix.lower() == ".7z":
+                seven = resource_path("assets/7zr.exe")
+                if seven.is_file():
+                    try:
+                        seven_result = subprocess.run(
+                            [str(seven), "x", str(archive), f"-o{destination}", "-y"],
+                            capture_output=True, text=True, timeout=900,
+                            creationflags=0x08000000,
+                        )
+                        if seven_result.returncode == 0:
+                            return
+                    except (OSError, subprocess.SubprocessError):
+                        pass
+                try:
+                    import py7zr
+                    with py7zr.SevenZipFile(archive, mode="r") as zf:
+                        zf.extractall(destination)
+                    return
+                except Exception as py_exc:
+                    raise InstallError(f"7z 解压失败：{py_exc}") from py_exc
+            raise InstallError("7z/rar 解压失败，请手动解压或安装 7-Zip") from exc
     raise InstallError("不支持的压缩格式：" + archive.suffix)
 
 
