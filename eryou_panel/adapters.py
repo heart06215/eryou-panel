@@ -636,6 +636,54 @@ class MaaAdapter(Adapter):
         return file_version(self.gui_exe())
 
 
+class BaasAdapter(Adapter):
+    """BAAS 的 Windows 发行包由 .venv 运行时启动，外层 exe 是安装器。"""
+
+    def python_exe(self) -> Path | None:
+        if not self.root:
+            return None
+        for name in ("pythonw.exe", "python.exe"):
+            candidate = self.root / ".venv" / "Scripts" / name
+            if candidate.is_file():
+                return candidate
+        return None
+
+    def exe_path(self) -> str:
+        exe = self.python_exe()
+        if exe is not None:
+            return str(exe)
+        return super().exe_path()
+
+    @property
+    def initialized(self) -> bool:
+        return bool(self.available and self.python_exe() and (self.root / "window.py").is_file())
+
+    def mode_text(self) -> str:
+        if not self.available:
+            return "未安装"
+        if not self.initialized:
+            return "缺少 Python 运行环境"
+        return "图形界面"
+
+    def gui_command(self) -> list[str]:
+        exe = self.python_exe()
+        if exe is None or not self.root:
+            raise AdapterError("BAAS 的 .venv 运行环境不存在")
+        entry = self.root / "window.py"
+        if not entry.is_file():
+            raise AdapterError("BAAS 的 window.py 不存在")
+        return [str(exe), str(entry)]
+
+    def gui_environment(self) -> dict[str, str]:
+        env = super().environment()
+        if self.root:
+            env["PYTHONPATH"] = ";".join(str(self.root / part) for part in (
+                ".env", ".venv/Lib", ".venv/Scripts", ".venv", ".",
+                ".venv/Lib/site-packages",
+            ))
+        return env
+
+
 class GenericAdapter(Adapter):
     def mode_text(self) -> str:
         if not self.available:
@@ -704,6 +752,8 @@ class GenericAdapter(Adapter):
 
 def make_adapter(project: Project) -> Adapter:
     kind = project.kind
+    if project.id == "blue-archive-auto-script":
+        return BaasAdapter(project)
     if kind == "okscript":
         return OkScriptAdapter(project)
     if kind == "maa":

@@ -37,3 +37,27 @@ def test_maa_requires_core_files(tmp_path: Path) -> None:
     assert adapter.initialized is True
     (root / "MaaCore.dll").unlink()
     assert adapter.initialized is False
+
+
+def test_baas_uses_embedded_venv_gui(tmp_path: Path) -> None:
+    root = tmp_path / "BAAS"
+    scripts = root / ".venv" / "Scripts"
+    scripts.mkdir(parents=True)
+    (scripts / "pythonw.exe").write_bytes(b"MZ")
+    (root / "window.py").write_text("print('gui')", encoding="utf-8")
+    (root / "BlueArchiveAutoScript_v1.4.3_win_x86_64.exe").write_bytes(b"MZ")
+    project = Project(id="blue-archive-auto-script", game="蔚蓝档案", name="BAAS",
+                      repo="x/y", kind="generic", directory=str(root),
+                      exe="BlueArchiveAutoScript_v1.4.3_win_x86_64.exe")
+    adapter = make_adapter(project)
+    assert adapter.initialized is True
+    assert adapter.mode_text() == "图形界面"
+    command = adapter.gui_command()
+    assert command[0].endswith("pythonw.exe")
+    assert command[1].endswith("window.py")
+    env = adapter.gui_environment()
+    assert str(root / ".env") in env["PYTHONPATH"]
+    assert str(root / ".venv" / "Lib" / "site-packages") in env["PYTHONPATH"]
+
+    (root / "window.py").unlink()
+    assert adapter.initialized is False
