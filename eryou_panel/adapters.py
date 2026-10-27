@@ -45,6 +45,10 @@ class Adapter:
     def available(self) -> bool:
         return bool(self.root and self.root.is_dir())
 
+    @property
+    def initialized(self) -> bool:
+        return self.available and bool(self.exe_path())
+
     def exe_path(self) -> str:
         if not self.root:
             return ""
